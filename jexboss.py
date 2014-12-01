@@ -1,7 +1,7 @@
 # coding: utf-8
 # JexBoss v1.0. @autor: João Filho Matos Figueiredo (joaomatosf@gmail.com)
 # Updates: https://github.com/joaomatosf/jexboss
-# Distribution and modifications free, since it preserves the authoring
+# Free for distribution and modification, but the authorship should be preserved.
 
 
 import httplib, sys, urllib, os, time
