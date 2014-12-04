@@ -5,6 +5,10 @@ JexBoss: Jboss verify and EXploitation Tool
 
 ---- Usage examples: ----------------------
 
+git clone https://github.com/joaomatosf/jexboss.git
+
+cd jexboss
+
 python jexboss.py https://site.com
 
 python jexboss.py https://site.com:8443
