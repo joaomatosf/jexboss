@@ -146,7 +146,11 @@ def shell_http(url, type):
 			print RED+ " * Error contacting the commando shell. Try again later..."
 			conn.close()
 			continue
-		stdout = resp.read().split("pre>")[1]
+		stdout = ""
+		try:
+			stdout = resp.read().split("pre>")[1]
+		except:
+			print RED+ " * Error contacting the commando shell. Try again later..."
 		if stdout.count("An exception occurred processing JSP page") == 1:
 			print RED + " * Error executing command \"%s\". " %cmd.split("=")[1] + ENDC
 		else: print stdout,
