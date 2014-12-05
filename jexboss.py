@@ -389,7 +389,7 @@ if status == 0:
 	url = sys.argv[1]
 elif status == 1:
 	print RED + "\n * Error: %s" %message
-	print BLUE + "\n Example:\n python %s https://mdigital.tjpb.jus.br\n" %sys.argv[0] + ENDC
+	print BLUE + "\n Example:\n python %s https://site.com.br\n" %sys.argv[0] + ENDC
 	sys.exit(status)
 elif status == 2:
 	url = ''.join(['http://',sys.argv[1]])
