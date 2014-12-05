@@ -28,18 +28,13 @@ The exploitation vectors are:
 * /invoker/JMXInvokerServlet
 	- tested and working in JBoss versions 4 and 5
 
-Usage examples
+Usage example
 ----
 * Check the file "demo.png"
 
 ```
 $ git clone https://github.com/joaomatosf/jexboss.git
 $ cd jexboss
-$ python jexboss.py https://site.com
-```
-
-* Example
-```
 $ python jexboss.py https://site-teste.com
 
  * --- JexBoss: Jboss verify and EXploitation Tool  --- *
