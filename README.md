@@ -109,3 +109,8 @@ dr-xr-xr-x. 22 root root     4096 Nov 23 03:26 ..
 [Type commands or "exit" to finish]
 Shell>
 ```
+
+Questions, problems, suggestions and etc:
+----
+
+* joaomatosf@gmail.com
