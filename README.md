@@ -23,10 +23,8 @@ The exploitation vectors are:
 
 * /jmx-console
 	- tested and working in JBoss versions 4, 5 and 6
-
 * /web-console/Invoker
 	- tested and working in JBoss versions 4
-
 * /invoker/JMXInvokerServlet
 	- tested and working in JBoss versions 4 and 5
 
@@ -36,9 +34,7 @@ Usage examples
 
 ```
 $ git clone https://github.com/joaomatosf/jexboss.git
-
 $ cd jexboss
-
 $ python jexboss.py https://site.com
 ```
 
