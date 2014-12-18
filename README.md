@@ -5,7 +5,7 @@ JexBoss is a tool for testing and exploiting vulnerabilities in JBoss Applicatio
 
 Requirements
 ----
-* Python >= 2.7.x
+* Python <= 2.7.x
 
 Installation
 ----
