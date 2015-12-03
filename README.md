@@ -105,3 +105,10 @@ Questions, problems, suggestions and etc:
 ----
 
 * joaomatosf@gmail.com
+
+Donate:
+----
+* Please consider making a donation to help improve this tool, including research to new versions of JBoss and zero days.
+
+* Bitcoin Address:  14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C
+* URI:  bitcoin:14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C?label=jexboss
