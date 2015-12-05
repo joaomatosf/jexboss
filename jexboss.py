@@ -8,6 +8,8 @@ from urllib import urlencode
 import urllib3
 from random import randint
 from urllib3.util.timeout import Timeout
+urllib3.disable_warnings()
+
 
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -21,7 +23,8 @@ NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
 timeout = Timeout(connect=3.0, read=7.0)
-pool = urllib3.PoolManager(timeout=timeout)
+pool = urllib3.PoolManager(timeout=timeout,cert_reqs='CERT_NONE')
+
 
 userAgents = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:38.0) Gecko/20100101 Firefox/38.0",
                 "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0",
