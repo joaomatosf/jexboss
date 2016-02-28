@@ -127,7 +127,7 @@ def auto_exploit(url, exploit_type):
     exploitWebConsoleInvoker:		 tested and working in JBoss 4
     exploitJMXInvokerFileRepository: tested and working in JBoss 4 and 5
     """
-    print(GREEN + "\n * Sending exploit code to %s. Wait...\n" % url)
+    print(GREEN + "\n * Sending exploit code to %s. Please wait...\n" % url)
     result = 505
     if exploit_type == "jmx-console":
         result = exploit_jmx_console_file_repository(url)
