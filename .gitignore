@@ -52,3 +52,9 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# PyCharm project files
+.idea/
+
+# I/O files
+*.csv
