@@ -111,7 +111,7 @@ def check_vul(url):
             else:
                 print(GREEN + "[ OK ]")
         except:
-            print(RED + "\n * An error occurred while connected to the host %s\n" % url + ENDC)
+            print(RED + "\n * An error occurred while connecting to the host %s\n" % url + ENDC)
             path[i] = 505
 
     return path
