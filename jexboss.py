@@ -19,7 +19,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from sys import argv, exit
+RED = '\x1b[91m'
+RED1 = '\033[31m'
+BLUE = '\033[94m'
+GREEN = '\033[32m'
+BOLD = '\033[1m'
+NORMAL = '\033[0m'
+ENDC = '\033[0m'
+
+from sys import argv, exit, version_info
 from os import name, system
 from time import sleep
 from random import randint
@@ -27,6 +35,16 @@ try:
     from urllib.parse import urlencode
 except ImportError:
     from urllib import urlencode
+
+try:
+    from urllib3 import disable_warnings, PoolManager
+    from urllib3.util.timeout import Timeout
+except ImportError:
+    ver = version_info[0] if version_info[0] >= 3 else ""
+    print(RED1 +BOLD+ "\n * Package urllib3 not installed. Please install the package urllib3 before continue.\n"
+          ""+GREEN+ "   Example: \n"
+                 "   # apt-get install python%s-pip ; easy_install%s urllib3\n" %(ver, ver) + ENDC)
+    exit(0)
 
 from urllib3 import disable_warnings, PoolManager
 from urllib3.util.timeout import Timeout
@@ -36,15 +54,6 @@ __version = "1.0.0"
 
 disable_warnings()
 
-
-RED = '\x1b[91m'
-RED1 = '\033[31m'
-BLUE = '\033[94m'
-GREEN = '\033[32m'
-BOLD = '\033[1m'
-NORMAL = '\033[0m'
-ENDC = '\033[0m'
-
 timeout = Timeout(connect=3.0, read=7.0)
 pool = PoolManager(timeout=timeout, cert_reqs='CERT_NONE')
 
@@ -53,8 +62,7 @@ user_agents = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:38.0) Gecko/201
                "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0",
                "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.155 Safari/537.36",
                "Mozilla/5.0 (Windows NT 5.1; rv:40.0) Gecko/20100101 Firefox/40.0",
-               "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; .NET CLR 2.0.50727; "
-               " .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)",
+               "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; .NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)",
                "Mozilla/5.0 (compatible; MSIE 6.0; Windows NT 5.1)",
                "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 2.0.50727)",
                "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0",
@@ -458,7 +466,8 @@ def main():
                   BOLD + i + NORMAL + "\" ?\n" +
                   "   This operation will provide a simple command shell to execute commands on the server..\n" +
                   RED + "   Continue only if you have permission!" + ENDC)
-            if input("   yes/NO ? ").lower() == "yes":
+            pick = input("   yes/NO ? ").lower() if version_info[0] >= 3 else raw_input("   yes/NO ? ").lower()
+            if pick == "yes":
                 auto_exploit(url, i)
 
     # resume results
