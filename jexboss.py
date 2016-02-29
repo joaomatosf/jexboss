@@ -185,7 +185,7 @@ def shell_http(url, shell_type):
 
     while 1:
         print(BLUE + "[Type commands or \"exit\" to finish]")
-        cmd = input("Shell> " + ENDC)
+        cmd = input("Shell> " + ENDC) if version_info[0] >= 3 else raw_input("Shell> " + ENDC)
         if cmd == "exit":
             break
 
