@@ -35,6 +35,8 @@ The exploitation vectors are:
 	- tested and working in JBoss versions 4
 * /invoker/JMXInvokerServlet
 	- tested and working in JBoss versions 4 and 5
+* /admin-console [ NEW ]
+	- tested and working in JBoss versions 5 and 6
 
 Usage example
 ----
@@ -66,6 +68,7 @@ $ python jexboss.py https://site-teste.com
 
  ** Checking Host: https://site-teste.com **
 
+ * Checking admin-console: 	       [ EXPOSED ]
  * Checking web-console: 	       [ OK ]
  * Checking jmx-console: 	       [ VULNERABLE ]
  * Checking JMXInvokerServlet: 	   [ VULNERABLE ]
