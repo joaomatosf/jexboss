@@ -29,14 +29,14 @@ The tool and exploits were developed and tested for versions 3, 4, 5 and 6 of th
 
 The exploitation vectors are:
 
+* /admin-console [ NEW ]
+	- tested and working in JBoss versions 5 and 6
 * /jmx-console
 	- tested and working in JBoss versions 4, 5 and 6
 * /web-console/Invoker
 	- tested and working in JBoss versions 4
 * /invoker/JMXInvokerServlet
 	- tested and working in JBoss versions 4 and 5
-* /admin-console [ NEW ]
-	- tested and working in JBoss versions 5 and 6
 
 Usage example
 ----
