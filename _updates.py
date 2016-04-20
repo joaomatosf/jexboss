@@ -38,6 +38,7 @@ BOLD = '\033[1m'
 NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
+
 def auto_update():
     """
     Download and deploy the latest version
@@ -79,6 +80,7 @@ def auto_update():
     shutil.rmtree('.'+os.path.sep+'jexboss-master')
 
     return True
+
 
 def check_updates():
     """
