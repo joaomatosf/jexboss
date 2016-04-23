@@ -14,14 +14,14 @@ To install the latest version of JexBoss, please use the following commands:
 
 	git clone https://github.com/joaomatosf/jexboss.git
 	cd jexboss
-	python jexboss.py
+	python jexboss.py -h
 
 	OR:
 
 	Download the latest version at: https://github.com/joaomatosf/jexboss/archive/master.zip
 	unzip master.zip
 	cd jexboss-master
-	python jexboss.py
+	python jexboss.py -h
 
 Features
 ----
@@ -37,6 +37,38 @@ The exploitation vectors are:
 	- tested and working in JBoss versions 4
 * /invoker/JMXInvokerServlet
 	- tested and working in JBoss versions 4 and 5
+
+Screenshots
+----
+
+* Standalone mode:
+```
+$ python jexboss.py -host 192.168.0.114:8080
+```
+![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/standalone_mode.png)
+
+* Usage modes:
+```
+$ python jexboss.py -h
+```
+![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/help_usage.png)
+
+* Network scan mode:
+```
+$ python jexboss.py -mode auto-scan -network 192.168.0.0/24 -ports 8080 -results results.txt
+```
+![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/network_scan_mode.png)
+
+* Network scan with auto-exploit mode:
+```
+$ python jexboss.py -mode auto-scan -A -network 192.168.0.0/24 -ports 8080 -results results.txt
+```
+![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/network_with_auto_exploit_mode.png)
+
+
+* Results and recommendations:
+
+![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/results_and_recommendations.png)
 
 Usage example
 ----

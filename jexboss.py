@@ -34,7 +34,7 @@ ENDC = '\033[0m'
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
 __version = "1.0.8"
 
-import sys
+import signal
 from sys import argv, exit, version_info
 from _exploits import *
 from _updates import *
@@ -70,6 +70,9 @@ disable_warnings()
 timeout = Timeout(connect=3.0, read=6.0)
 pool = PoolManager(timeout=timeout, cert_reqs='CERT_NONE')
 
+global gl_interrupted
+gl_interrupted = False
+
 user_agents = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:38.0) Gecko/20100101 Firefox/38.0",
                "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0",
                "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.112 Safari/537.36",
@@ -86,6 +89,14 @@ user_agents = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:38.0) Gecko/201
                "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:41.0) Gecko/20100101 Firefox/41.0"]
 
 global gl_args
+
+
+def handler_interrupt(signum, frame):
+    global gl_interrupted
+    gl_interrupted = True
+    print ("Interrupting execution ...")
+
+signal.signal(signal.SIGINT, handler_interrupt)
 
 def get_successfully(url, path):
     """
@@ -149,6 +160,7 @@ def check_vul(url):
              "admin-console" : "/admin-console/"}
 
     for i in paths.keys():
+        if gl_interrupted: break
         try:
             print(GREEN + " * Checking %s: \t" % i + ENDC),
             r = pool.request('HEAD', url +str(paths[i]), redirect=False, headers=headers)
@@ -355,6 +367,7 @@ def main():
         file_results = open(gl_args.results, 'w')
         file_results.write("JexBoss Scan Mode Report\n\n")
         for ip in gl_args.network.hosts():
+            if gl_interrupted: break
             for port in gl_args.ports.split(","):
                 if check_connectivity(ip, port):
                     url = "{0}:{1}".format(ip,port)
@@ -369,7 +382,7 @@ def main():
                                 else:
                                     file_results.write("{0}:\t[FAILED TO EXPLOITED VIA {1}]\n".format(url, key))
                             else:
-                                file_results.write("{0}:\t[POSSIBLY VULNERABLE TO {}]\n".format(url, key))
+                                file_results.write("{0}:\t[POSSIBLY VULNERABLE TO {1}]\n".format(url, key))
 
                             file_results.flush()
                 else:
@@ -381,6 +394,7 @@ def main():
         file_results.write("JexBoss Scan Mode Report\n\n")
         file_input = open(gl_args.file, 'r')
         for url in file_input.readlines():
+            if gl_interrupted: break
             url = url.strip()
             ip = str(parse_url(url)[2])
             port = parse_url(url)[3] if parse_url(url)[3] != None else 80
