@@ -42,19 +42,66 @@ Usage example
 ----
 * Check the file "demo.png"
 
+* Auto scan mode:
+```
+$ python jexboss.py -mode auto-scan -network 192.168.0.0/24 -ports 8080,80 -results report_auto_scan.log
+```
+
+* File scan mode:
+```
+$ python jexboss.py -mode file-scan -file host_list.txt -out report_file_scan.log
+```
+
+* More Options:
+
+```
+$ python jexboss.py -h
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit
+  --auto-exploit, -A    Send exploit code automatically (USE ONLY IF YOU HAVE
+                        PERMISSION!!!)
+  --disable-check-updates, -D
+                        Disable the check for updates performed by JSP
+                        Webshell at:
+                        http://webshell.jexboss.net/jsp_version.txt
+  -mode {auto-scan,file-scan,standalone}
+                        Operation mode
+
+Standalone mode:
+  -host HOST            Host address to be checked (eg.
+                        http://192.168.0.10:8080)
+
+Auto scan mode:
+  -network NETWORK      Network to be checked in CIDR format (eg. 10.0.0.0/8)
+  -ports PORTS          List of ports separated by commas to be checked for
+                        each host (eg. 8080,8443,8888,80,443)
+  -results FILENAME     File name to store the auto scan results
+
+File scan mode:
+  -file FILENAME_HOSTS  Filename with host list to be scanned (one host per
+                        line)
+  -out FILENAME_RESULTS
+                        File name to store the file scan results
+
+```
+
+* Standalone mode:
+
 ```
 * Via git:
 
 $ git clone https://github.com/joaomatosf/jexboss.git
 $ cd jexboss
-$ python jexboss.py https://site-teste.com
+$ python jexboss.py -host https://site-teste.com
 
 * Or via download:
 
 $ wget https://github.com/joaomatosf/jexboss/archive/master.zip
 $ unzip master.zip
 $ cd jexboss-master
-$ python jexboss.py https://site-teste.com
+$ python jexboss.py -host https://site-teste.com
 
 
  * --- JexBoss: Jboss verify and EXploitation Tool  --- *
@@ -148,6 +195,8 @@ Results: potentially compromised server!
  * Bitcoin Address:  14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C
  * URI:  bitcoin:14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C?label=jexboss
 ```
+
+
 
 Questions, problems, suggestions and etc:
 ----

