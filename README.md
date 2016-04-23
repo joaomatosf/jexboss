@@ -63,7 +63,7 @@ $ python jexboss.py -mode auto-scan -network 192.168.0.0/24 -ports 8080 -results
 ```
 $ python jexboss.py -mode auto-scan -A -network 192.168.0.0/24 -ports 8080 -results results.txt
 ```
-![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/network_with_auto_exploit_mode.png)
+![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/scan_with_auto_exploit_mode.png)
 
 
 * Results and recommendations:
