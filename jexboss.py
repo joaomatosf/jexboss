@@ -32,7 +32,7 @@ NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.0.8"
+__version = "1.0.9"
 
 import signal
 from sys import argv, exit, version_info
