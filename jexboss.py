@@ -20,7 +20,6 @@ limitations under the License.
 """
 import textwrap
 import traceback
-from idlelib.ColorDelegator import prog
 from urllib3.util import parse_url
 
 RED = '\x1b[91m'
