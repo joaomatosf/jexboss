@@ -20,7 +20,7 @@ limitations under the License.
 """
 import textwrap
 import traceback
-from urllib3.util import parse_url
+
 
 RED = '\x1b[91m'
 RED1 = '\033[31m'
@@ -31,7 +31,7 @@ NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.0.9"
+__version = "1.0.10"
 
 import signal
 from sys import argv, exit, version_info
@@ -43,8 +43,7 @@ import shutil
 from zipfile import ZipFile
 from time import sleep
 from random import randint
-import argparse
-import ipaddress, socket
+import argparse, socket
 
 try:
     from urllib.parse import urlencode
@@ -52,6 +51,7 @@ except ImportError:
     from urllib import urlencode
 
 try:
+    from urllib3.util import parse_url
     from urllib3 import disable_warnings, PoolManager
     from urllib3.util.timeout import Timeout
 except ImportError:
@@ -59,6 +59,15 @@ except ImportError:
     print(RED1 + BOLD + "\n * Package urllib3 not installed. Please install the package urllib3 before continue.\n"
                         "" + GREEN + "   Example: \n"
                                      "   # apt-get install python%s-pip ; easy_install%s urllib3\n" % (ver, ver) + ENDC)
+    exit(0)
+
+try:
+    import ipaddress
+except:
+    ver = version_info[0] if version_info[0] >= 3 else ""
+    print(RED1 + BOLD + "\n * Package ipaddress not installed. Please install the package ipaddress before continue.\n"
+                        "" + GREEN + "   Example: \n"
+                                     "   # apt-get install python%s-pip ; easy_install%s ipaddress\n" % (ver, ver) + ENDC)
     exit(0)
 
 from urllib3 import disable_warnings, PoolManager

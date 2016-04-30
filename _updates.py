@@ -17,18 +17,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from jexboss import __version
-import os
-import shutil
-from zipfile import ZipFile
-
-from urllib3 import disable_warnings, PoolManager
-from urllib3.util.timeout import Timeout
-
-disable_warnings()
-
-timeout = Timeout(connect=3.0, read=6.0)
-pool = PoolManager(timeout=timeout, cert_reqs='CERT_NONE')
 
 RED = '\x1b[91m'
 RED1 = '\033[31m'
@@ -37,6 +25,27 @@ GREEN = '\033[32m'
 BOLD = '\033[1m'
 NORMAL = '\033[0m'
 ENDC = '\033[0m'
+
+from jexboss import __version
+from sys import version_info
+import os
+import shutil
+from zipfile import ZipFile
+try:
+    from urllib3 import disable_warnings, PoolManager
+    from urllib3.util.timeout import Timeout
+    disable_warnings()
+except ImportError:
+    ver = version_info[0] if version_info[0] >= 3 else ""
+    print(RED1 + BOLD + "\n * Package urllib3 not installed. Please install the package urllib3 before continue.\n"
+                        "" + GREEN + "   Example: \n"
+                                     "   # apt-get install python%s-pip ; easy_install%s urllib3\n" % (ver, ver) + ENDC)
+    exit(0)
+
+timeout = Timeout(connect=3.0, read=6.0)
+pool = PoolManager(timeout=timeout, cert_reqs='CERT_NONE')
+
+
 
 
 def auto_update():
