@@ -36,10 +36,9 @@ try:
     from urllib3.util.timeout import Timeout
     disable_warnings()
 except ImportError:
-    ver = version_info[0] if version_info[0] >= 3 else ""
-    print(RED1 + BOLD + "\n * Package urllib3 not installed. Please install the package urllib3 before continue.\n"
+    print(RED1 + BOLD + "\n * Package urllib3 not installed. Please install the dependencies before continue.\n"
                         "" + GREEN + "   Example: \n"
-                                     "   # apt-get install python%s-pip ; easy_install%s urllib3\n" % (ver, ver) + ENDC)
+                                     "   # pip install -r requires.txt\n" + ENDC)
     exit(0)
 
 timeout = Timeout(connect=3.0, read=6.0)

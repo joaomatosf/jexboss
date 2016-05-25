@@ -7,6 +7,7 @@ Requirements
 ----
 * Python >= 2.7.x
 * [urllib3](https://pypi.python.org/pypi/urllib3)
+* [ipaddress](https://pypi.python.org/pypi/ipaddress)
 
 Installation
 ----
@@ -14,6 +15,7 @@ To install the latest version of JexBoss, please use the following commands:
 
 	git clone https://github.com/joaomatosf/jexboss.git
 	cd jexboss
+	pip install -r requires.txt
 	python jexboss.py -h
 
 	OR:
@@ -21,7 +23,17 @@ To install the latest version of JexBoss, please use the following commands:
 	Download the latest version at: https://github.com/joaomatosf/jexboss/archive/master.zip
 	unzip master.zip
 	cd jexboss-master
+	pip install -r requires.txt
 	python jexboss.py -h
+
+
+If you are using CentOS with Python 2.6, please install Python2.7.
+Installation example of the Python 2.7 on CentOS using Collections Software scl:
+
+    yum -y install centos-release-scl
+    yum -y install python27
+    scl enable python27 bash
+
 
 Features
 ----

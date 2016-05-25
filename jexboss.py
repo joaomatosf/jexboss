@@ -31,10 +31,20 @@ NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.0.10"
+__version = "1.0.11"
+
+from sys import argv, exit, version_info
+
+if version_info[0] == 2 and version_info[1] < 7:
+    print(RED1 + BOLD + "\n * You are using the Python version 2.6. The JexBoss requires version >= 2.7.\n"
+                        "" + GREEN + "   Please install the Python version >= 2.7. \n\n"
+                                     "   Example for CentOS using Software Collections scl:\n"
+                                     "   # yum -y install centos-release-scl\n"
+                                     "   # yum -y install python27\n"
+                                     "   # scl enable python27 bash\n" + ENDC)
+    exit(0)
 
 import signal
-from sys import argv, exit, version_info
 from _exploits import *
 from _updates import *
 from os import name, system
@@ -44,6 +54,7 @@ from zipfile import ZipFile
 from time import sleep
 from random import randint
 import argparse, socket
+
 
 try:
     from urllib.parse import urlencode
@@ -55,19 +66,17 @@ try:
     from urllib3 import disable_warnings, PoolManager
     from urllib3.util.timeout import Timeout
 except ImportError:
-    ver = version_info[0] if version_info[0] >= 3 else ""
-    print(RED1 + BOLD + "\n * Package urllib3 not installed. Please install the package urllib3 before continue.\n"
+    print(RED1 + BOLD + "\n * Package urllib3 not installed. Please install the dependencies before continue.\n"
                         "" + GREEN + "   Example: \n"
-                                     "   # apt-get install python%s-pip ; easy_install%s urllib3\n" % (ver, ver) + ENDC)
+                                     "   # pip install -r requires.txt\n" + ENDC)
     exit(0)
 
 try:
     import ipaddress
 except:
-    ver = version_info[0] if version_info[0] >= 3 else ""
-    print(RED1 + BOLD + "\n * Package ipaddress not installed. Please install the package ipaddress before continue.\n"
+    print(RED1 + BOLD + "\n * Package ipaddress not installed. Please install the dependencies before continue.\n"
                         "" + GREEN + "   Example: \n"
-                                     "   # apt-get install python%s-pip ; easy_install%s ipaddress\n" % (ver, ver) + ENDC)
+                                     "   # pip install -r requires.txt\n" + ENDC)
     exit(0)
 
 from urllib3 import disable_warnings, PoolManager
@@ -496,7 +505,7 @@ if __name__ == "__main__":
                         action='store_true')
     parser.add_argument("--disable-check-updates", "-D", help="Disable the check for updates performed by JSP Webshell at: http://webshell.jexboss.net/jsp_version.txt",
                         action='store_true')
-    parser.add_argument('-mode', help="Operation mode", choices={'standalone','auto-scan', 'file-scan'}, default='standalone')
+    parser.add_argument('-mode', help="Operation mode", choices=['standalone', 'auto-scan', 'file-scan'], default='standalone')
 
     group_standalone.add_argument("-host", help="Host address to be checked (eg. http://192.168.0.10:8080)",
                                   type=str)
