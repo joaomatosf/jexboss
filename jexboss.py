@@ -31,7 +31,7 @@ NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.0.11"
+__version = "1.0.12"
 
 from sys import argv, exit, version_info
 
@@ -134,6 +134,7 @@ def get_successfully(url, path):
         result = r.status
     return result
 
+
 def check_connectivity(host, port):
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -147,6 +148,7 @@ def check_connectivity(host, port):
 
 
     return True
+
 
 def check_vul(url):
     """
@@ -182,6 +184,16 @@ def check_vul(url):
             print(GREEN + " * Checking %s: \t" % i + ENDC),
             r = pool.request('HEAD', url +str(paths[i]), redirect=False, headers=headers)
             paths[i] = r.status
+
+            # check if it's false positive
+            if len(r.getheaders()) == 0:
+                print(RED + "[ ERROR ]\n * The server %s is not an HTTP server.\n" % url + ENDC)
+                paths = {"jmx-console": 505,
+                         "web-console": 505,
+                         "JMXInvokerServlet": 505,
+                         "admin-console": 505}
+                break
+
             if paths[i] in (301, 302, 303, 307, 308):
                 url_redirect = r.get_redirect_location()
                 print(GREEN + "[ REDIRECT ]\n * The server sent a redirect to: %s\n" % url_redirect)
