@@ -1,2 +1,2 @@
-urllib3
+urllib3>=1.8
 ipaddress
