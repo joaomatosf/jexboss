@@ -20,7 +20,8 @@ limitations under the License.
 """
 import textwrap
 import traceback
-
+import logging
+logging.captureWarnings(True)
 
 RED = '\x1b[91m'
 RED1 = '\033[31m'
@@ -31,7 +32,7 @@ NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.0.13"
+__version = "1.0.14"
 
 from sys import argv, exit, version_info
 
@@ -63,13 +64,13 @@ except ImportError:
 
 try:
     from urllib3.util import parse_url
-    from urllib3 import disable_warnings, PoolManager
-    from urllib3.util.timeout import Timeout
+    from urllib3 import PoolManager
+    from urllib3.util import Timeout
 except ImportError:
     print(RED1 + BOLD + "\n * Package urllib3 not installed. Please install the dependencies before continue.\n"
                         "" + GREEN + "   Example: \n"
                                      "   # pip install -r requires.txt\n" + ENDC)
-    with open('debug.log', 'a') as debug_file:
+    with open('error.log', 'a') as debug_file:
         traceback.print_exc(file=debug_file)
     exit(0)
 
@@ -81,10 +82,8 @@ except:
                                      "   # pip install -r requires.txt\n" + ENDC)
     exit(0)
 
-from urllib3 import disable_warnings, PoolManager
-from urllib3.util.timeout import Timeout
-
-disable_warnings()
+from urllib3 import PoolManager
+from urllib3.util import Timeout
 
 timeout = Timeout(connect=3.0, read=6.0)
 pool = PoolManager(timeout=timeout, cert_reqs='CERT_NONE')

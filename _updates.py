@@ -32,16 +32,18 @@ import os
 import shutil
 from zipfile import ZipFile
 import traceback
+import logging
+logging.captureWarnings(True)
+
 
 try:
-    from urllib3 import disable_warnings, PoolManager
-    from urllib3.util.timeout import Timeout
-    disable_warnings()
+    from urllib3 import PoolManager
+    from urllib3.util import Timeout
 except ImportError:
     print(RED1 + BOLD + "\n * Package urllib3 not installed. Please install the dependencies before continue.\n"
                         "" + GREEN + "   Example: \n"
                                      "   # pip install -r requires.txt\n" + ENDC)
-    with open('debug.log', 'a') as debug_file:
+    with open('error.log', 'a') as debug_file:
         traceback.print_exc(file=debug_file)
     exit(0)
 
