@@ -21,7 +21,6 @@ limitations under the License.
 import textwrap
 import traceback
 import logging
-logging.captureWarnings(True)
 
 RED = '\x1b[91m'
 RED1 = '\033[31m'
@@ -45,6 +44,7 @@ if version_info[0] == 2 and version_info[1] < 7:
                                      "   # scl enable python27 bash\n" + ENDC)
     exit(0)
 
+logging.captureWarnings(True)
 import signal
 from _exploits import *
 from _updates import *
