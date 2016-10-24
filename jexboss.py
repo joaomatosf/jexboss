@@ -32,7 +32,7 @@ NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.0.14"
+__version = "1.0.15"
 
 from sys import argv, exit, version_info
 
@@ -56,6 +56,12 @@ from time import sleep
 from random import randint
 import argparse, socket
 
+try:
+    import readline
+    #readline.parse_and_bind('tab: complete')
+    readline.parse_and_bind('set editing-mode vi')
+except:
+    traceback.print_exc(file=debug_file)
 
 try:
     from urllib.parse import urlencode
@@ -284,8 +290,8 @@ def shell_http(url, shell_type):
     print(resp.replace('\\n', '\n')),
 
     while 1:
-        print(BLUE + "[Type commands or \"exit\" to finish]")
-        cmd = input("Shell> " + ENDC) if version_info[0] >= 3 else raw_input("Shell> " + ENDC)
+        print(BLUE + "[Type commands or \"exit\" to finish]" +ENDC)
+        cmd = input("Shell> ") if version_info[0] >= 3 else raw_input("Shell> ")
         if cmd == "exit":
             break
 
