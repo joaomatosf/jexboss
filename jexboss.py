@@ -61,7 +61,8 @@ try:
     #readline.parse_and_bind('tab: complete')
     readline.parse_and_bind('set editing-mode vi')
 except:
-    traceback.print_exc(file=debug_file)
+    with open('error.log', 'a') as debug_file:
+        traceback.print_exc(file=debug_file)
 
 try:
     from urllib.parse import urlencode
