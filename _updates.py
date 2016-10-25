@@ -104,7 +104,11 @@ def check_updates():
     url = 'http://joaomatosf.com/rnp/releases.txt'
     print(BLUE + " * Checking for updates in: %s **\n" % url + ENDC)
     header = {"User-Agent": "Checking for updates"}
-    r = pool.request('GET', url, redirect=False, headers=header)
+    try:
+        r = pool.request('GET', url, redirect=False, headers=header)
+    except:
+        print(RED + " * Error: could not check for updates ...\n" + ENDC)
+        return False
 
     if r.status != 200:
         print(RED + " * Error: could not check for updates ...\n" + ENDC)
