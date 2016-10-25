@@ -31,7 +31,7 @@ NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.0.15"
+__version = "1.0.16"
 
 from sys import argv, exit, version_info
 
@@ -364,20 +364,21 @@ def main():
     :return: Exit code
     """
     # check for Updates
-    updates = check_updates()
-    if updates:
-        print(BLUE + BOLD + "\n\n * An update is available and is recommended update before continuing.\n" +
-              "   Do you want to update now?")
-        pick = input("   YES/no ? ").lower() if version_info[0] >= 3 else raw_input("   YES/no ? ").lower()
-        print (ENDC)
-        if pick != "no":
-            updated = auto_update()
-            if updated:
-                print(GREEN + BOLD + "\n * The JexBoss has been successfully updated. Please run again to enjoy the updates.\n" +ENDC)
-                exit(0)
-            else:
-                print(RED + BOLD + "\n\n * An error occurred while updating the JexBoss. Please try again..\n" +ENDC)
-                exit(1)
+    if not gl_args.disable_check_updates:
+        updates = check_updates()
+        if updates:
+            print(BLUE + BOLD + "\n\n * An update is available and is recommended update before continuing.\n" +
+                  "   Do you want to update now?")
+            pick = input("   YES/no ? ").lower() if version_info[0] >= 3 else raw_input("   YES/no ? ").lower()
+            print (ENDC)
+            if pick != "no":
+                updated = auto_update()
+                if updated:
+                    print(GREEN + BOLD + "\n * The JexBoss has been successfully updated. Please run again to enjoy the updates.\n" +ENDC)
+                    exit(0)
+                else:
+                    print(RED + BOLD + "\n\n * An error occurred while updating the JexBoss. Please try again..\n" +ENDC)
+                    exit(1)
 
     vulnerables = False
     # check vulnerabilities for standalone mode
@@ -522,7 +523,9 @@ if __name__ == "__main__":
     parser.add_argument("--auto-exploit", "-A",
                         help="Send exploit code automatically (USE ONLY IF YOU HAVE PERMISSION!!!)",
                         action='store_true')
-    parser.add_argument("--disable-check-updates", "-D", help="Disable the check for updates performed by JSP Webshell at: http://webshell.jexboss.net/jsp_version.txt",
+    parser.add_argument("--disable-check-updates", "-D", help="Disable two updates checks: 1) Check for updates "
+                        "performed by the webshell in exploited server at http://webshell.jexboss.net/jsp_version.txt and 2) check for updates "
+                        "performed by the jexboss client at http://joaomatosf.com/rnp/releases.txt",
                         action='store_true')
     parser.add_argument('-mode', help="Operation mode", choices=['standalone', 'auto-scan', 'file-scan'], default='standalone')
 
