@@ -26,31 +26,25 @@ BOLD = '\033[1m'
 NORMAL = '\033[0m'
 ENDC = '\033[0m'
 
-from jexboss import __version
+import jexboss
 from sys import version_info
 import os
 import shutil
 from zipfile import ZipFile
 import traceback
-import logging
+import logging, datetime
 logging.captureWarnings(True)
+FORMAT = "%(asctime)s (%(levelname)s): %(message)s"
+logging.basicConfig(filename='jexboss_'+str(datetime.datetime.today().date())+'.log', format=FORMAT, level=logging.INFO)
 
 
-try:
-    from urllib3 import PoolManager
-    from urllib3.util import Timeout
-except ImportError:
-    print(RED1 + BOLD + "\n * Package urllib3 not installed. Please install the dependencies before continue.\n"
-                        "" + GREEN + "   Example: \n"
-                                     "   # pip install -r requires.txt\n" + ENDC)
-    with open('error.log', 'a') as debug_file:
-        traceback.print_exc(file=debug_file)
-    exit(0)
 
-timeout = Timeout(connect=3.0, read=6.0)
-pool = PoolManager(timeout=timeout, cert_reqs='CERT_NONE')
+global gl_http_pool
 
 
+def set_http_pool(pool):
+    global gl_http_pool
+    gl_http_pool = pool
 
 
 def auto_update():
@@ -60,26 +54,26 @@ def auto_update():
     """
     url = 'https://github.com/joaomatosf/jexboss/archive/master.zip'
 
-    # backup of prior version
+    # backup of prior version7
     if os.path.exists('old_version'):
         shutil.rmtree('old_version')
     shutil.copytree(".", "." + os.path.sep + "old_version")
 
     # download and extract of new version
-    print(GREEN + " * Downloading the new version from %s." %url +ENDC )
-    r = pool.request('GET', url)
+    jexboss.print_and_flush(GREEN + " * Downloading the new version from %s." %url +ENDC )
+    r = gl_http_pool.request('GET', url)
     if r.status != 200:
-        print(RED + " * Error: Could not complete the download of the new version. Check your internet connection." + ENDC)
+        jexboss.print_and_flush(RED + " * Error: Could not complete the download of the new version. Check your internet connection." + ENDC)
         return False
     with open('master.zip', 'wb') as f:
         f.write(r.data)
     z = ZipFile('master.zip', 'r')
-    print(GREEN + " * Extracting new version..." +ENDC)
+    jexboss.print_and_flush(GREEN + " * Extracting new version..." +ENDC)
     z.extractall(path='.')
     z.close()
     os.remove('master.zip')
     path_new_version = '.' + os.path.sep + 'jexboss-master'
-    print(GREEN + " * Replacing the current version with the new version..."  + ENDC)
+    jexboss.print_and_flush(GREEN + " * Replacing the current version with the new version..."  + ENDC)
     for root, dirs, files in os.walk(path_new_version):
         for file in files:
             old_path = root.replace(path_new_version, '.') + os.path.sep
@@ -102,19 +96,28 @@ def check_updates():
     :return: boolean if there updates
     """
     url = 'http://joaomatosf.com/rnp/releases.txt'
-    print(BLUE + " * Checking for updates in: %s **\n" % url + ENDC)
+    jexboss.print_and_flush(BLUE + " * Checking for updates in: %s **\n" % url + ENDC)
     header = {"User-Agent": "Checking for updates"}
+
     try:
-        r = pool.request('GET', url, redirect=False, headers=header)
+        r = gl_http_pool.request('GET', url, redirect=False, headers=header)
     except:
-        print(RED + " * Error: could not check for updates ...\n" + ENDC)
+        jexboss.print_and_flush(RED + " * Error: Failed to check for updates ...\n" + ENDC)
+        logging.warning("Failed to check for updates.", exc_info=traceback)
         return False
 
-    if r.status != 200:
-        print(RED + " * Error: could not check for updates ...\n" + ENDC)
+    if r.status == 407:
+        jexboss.print_and_flush(RED + BOLD + " * Error: Proxy authentication is required. \n"
+                           "   Please enter the correct login and password for authentication. \n"
+                           "   Example: -P http://proxy.com:3128 -L username:password\n" + ENDC)
+        logging.error("Proxy authentication failed")
+        exit(1)
+    elif r.status != 200:
+        jexboss.print_and_flush(RED + " * Error: could not check for updates ...\n" + ENDC)
+        logging.warning("Failed to check for updates. HTTP Code: %s" % r.status)
         return False
     else:
-        current_version = __version
+        current_version = jexboss.__version
         link = 'https://github.com/joaomatosf/jexboss/archive/master.zip'
         date_last_version = ''
         notes = []
@@ -136,12 +139,12 @@ def check_updates():
         # compare last_version with current version
         tup = lambda x: [int(y) for y in (x + '.0.0.0').split('.')][:3]
         if tup(last_version) > tup(current_version):
-            print (
+            jexboss.print_and_flush (
             GREEN + BOLD + " * NEW VERSION AVAILABLE: JexBoss v%s (%s)\n" % (last_version, date_last_version) + ENDC +
             GREEN + "   * Link: %s\n" % link +
             GREEN + "   * Release notes:")
             for note in notes:
-                print ("      %s" % note)
+                jexboss.print_and_flush ("      %s" % note)
             return True
         else:
             return False
