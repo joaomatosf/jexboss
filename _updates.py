@@ -106,13 +106,7 @@ def check_updates():
         logging.warning("Failed to check for updates.", exc_info=traceback)
         return False
 
-    if r.status == 407:
-        jexboss.print_and_flush(RED + BOLD + " * Error: Proxy authentication is required. \n"
-                           "   Please enter the correct login and password for authentication. \n"
-                           "   Example: -P http://proxy.com:3128 -L username:password\n" + ENDC)
-        logging.error("Proxy authentication failed")
-        exit(1)
-    elif r.status != 200:
+    if r.status != 200:
         jexboss.print_and_flush(RED + " * Error: could not check for updates ...\n" + ENDC)
         logging.warning("Failed to check for updates. HTTP Code: %s" % r.status)
         return False

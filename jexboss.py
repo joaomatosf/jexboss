@@ -38,7 +38,7 @@ FORMAT = "%(asctime)s (%(levelname)s): %(message)s"
 logging.basicConfig(filename='jexboss_'+str(datetime.datetime.today().date())+'.log', format=FORMAT, level=logging.INFO)
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.1.2"
+__version = "1.1.3"
 
 RED = '\x1b[91m'
 RED1 = '\033[31m'
@@ -127,6 +127,36 @@ def get_random_user_agent():
     return user_agents[randint(0, len(user_agents) - 1)]
 
 
+def is_proxy_ok():
+    print_and_flush(GREEN + "\n ** Checking proxy: %s **\n\n" % gl_args.proxy)
+
+    headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+               "Connection": "keep-alive",
+               "User-Agent": get_random_user_agent()}
+    try:
+        r = gl_http_pool.request('GET', gl_args.host, redirect=False, headers=headers)
+    except:
+        print_and_flush(RED + " * Error: Failed to connect to %s using proxy %s.\n"
+                              "   See logs for more details...\n" %(gl_args.host,gl_args.proxy) + ENDC)
+        logging.warning("Failed to connect to %s using proxy" %gl_args.host, exc_info=traceback)
+        return False
+
+    if r.status == 407:
+        print_and_flush(RED + " * Error 407: Proxy authentication is required. \n"
+                                      "   Please enter the correct login and password for authentication. \n"
+                                      "   Example: -P http://proxy.com:3128 -L username:password\n" + ENDC)
+        logging.error("Proxy authentication failed")
+        return False
+
+    elif r.status == 503 or r.status == 502:
+        print_and_flush(RED + " * Error %s: The service %s is not availabel to your proxy. \n"
+                              "   See logs for more details...\n" %(r.status,gl_args.host)+ENDC)
+        logging.error("Service unavailable to your proxy")
+        return False
+    else:
+        return True
+
+
 def configure_http_pool():
 
     global gl_http_pool
@@ -140,7 +170,7 @@ def configure_http_pool():
         # when using proxy, protocol should be informed
         if 'http' not in gl_args.host or 'http' not in gl_args.proxy:
             print_and_flush(RED + " * When using proxy, you must specify the http or https protocol"
-                        " (eg. http://%s).\n\n" %(gl_args.host if 'http' not in gl_args.host else gl_args.proxy) +ENDC)
+                                  " (eg. http://%s).\n\n" %(gl_args.host if 'http' not in gl_args.host else gl_args.proxy) +ENDC)
             logging.critical('Protocol not specified')
             exit(1)
 
@@ -646,4 +676,6 @@ if __name__ == "__main__":
         _updates.set_http_pool(gl_http_pool)
         _exploits.set_http_pool(gl_http_pool)
         banner()
+        if gl_args.proxy and not is_proxy_ok():
+            exit(1)
         main()
