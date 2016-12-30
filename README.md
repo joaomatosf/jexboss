@@ -1,7 +1,8 @@
-JexBoss - Jboss verify and EXploitation Tool
-=======
+JexBoss - JBoss (and others Java application servers) verify and EXploitation Tool
+==================================================================================
 
-JexBoss is a tool for testing and exploiting vulnerabilities in JBoss Application Server.
+JexBoss is a tool for testing and exploiting vulnerabilities in JBoss Application Server
+And Others Java Aplication Servers (eg. WebLogic, Glassfish, Tomcat, Axis2, etc)
 
 Requirements
 ----
