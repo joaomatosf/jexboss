@@ -38,7 +38,7 @@ FORMAT = "%(asctime)s (%(levelname)s): %(message)s"
 logging.basicConfig(filename='jexboss_'+str(datetime.datetime.today().date())+'.log', format=FORMAT, level=logging.INFO)
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version__ = "1.2.1"
+__version__ = "1.2.2"
 
 RED = '\x1b[91m'
 RED1 = '\033[31m'
