@@ -38,7 +38,7 @@ FORMAT = "%(asctime)s (%(levelname)s): %(message)s"
 logging.basicConfig(filename='jexboss_'+str(datetime.datetime.today().date())+'.log', format=FORMAT, level=logging.INFO)
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version__ = "1.2.2"
+__version__ = "1.2.3"
 
 RED = '\x1b[91m'
 RED1 = '\033[31m'
@@ -1106,7 +1106,7 @@ if __name__ == "__main__":
                                 action='store_true')
     group_advanced.add_argument("--gadget", help="Specify the type of Gadget to generate the payload automatically."
                                                  " (DEFAULT: commons-collections3.1 or groovy1 for JenKins)",
-                                    choices=['commons-collections3.1', 'commons-collections4.0', 'groovy1'],
+                                    choices=['commons-collections3.1', 'commons-collections4.0', 'jdk7u21', 'jdk8u20', 'groovy1'],
                                     default='commons-collections3.1')
     group_advanced.add_argument("--load-gadget", help="Provide your own gadget from file (a java serialized object in RAW mode)",
                                 metavar='FILENAME')
@@ -1156,3 +1156,4 @@ if __name__ == '__testing__':
     timeout = Timeout(connect=1.0, read=3.0)
     gl_http_pool = PoolManager(timeout=timeout, cert_reqs='CERT_NONE')
     _exploits.set_http_pool(gl_http_pool)
+
